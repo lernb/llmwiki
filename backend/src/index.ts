@@ -5,6 +5,7 @@ import { cors } from "hono/cors";
 import { PORT, HOST, WIKI_DIR } from "./config.js";
 import { buildIndex } from "./core/search.js";
 import { ensureIndexPage } from "./core/engine.js";
+import { backfillIngestMeta } from "./storage/ingestMeta.js";
 import { pagesRouter } from "./routes/pages.js";
 import { sourcesRouter } from "./routes/sources.js";
 import { graphRouter } from "./routes/graph.js";
@@ -38,6 +39,7 @@ app.route("/api/query", queryRouter);
 
 // Startup
 console.log(`📄 Wiki directory: ${WIKI_DIR}`);
+backfillIngestMeta();
 const idxSlug = ensureIndexPage();
 console.log(`🏠 Index page: ${idxSlug}`);
 console.log("🔍 Building search index...");

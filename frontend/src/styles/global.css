@@ -724,8 +724,15 @@ a:hover {
 
 .graph-page__info {
   color: var(--text-secondary);
-  margin-bottom: 16px;
+  margin-bottom: 4px;
   font-size: 14px;
+}
+
+.graph-page__hint {
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  font-size: 12px;
+  opacity: 0.7;
 }
 
 .graph-canvas {

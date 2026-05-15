@@ -1,0 +1,53 @@
+{
+  "records": [
+    {
+      "filename": "辅料长期合同.pdf",
+      "lastIngested": 1778820969321,
+      "pagesCreated": [
+        "cai-gou-guan-li",
+        "fu-liao-chang-qi-he-tong",
+        "gong-ying-lian-wen-dang",
+        "he-tong-guan-li"
+      ],
+      "pagesUpdated": [],
+      "status": "success"
+    },
+    {
+      "filename": "面料合同.pdf",
+      "lastIngested": 1778820969321,
+      "pagesCreated": [
+        "fang-zhi-pin-mao-yi-he-tong",
+        "mian-liao-gui-ge-yu-zhi-liang-biao-zhun",
+        "mian-liao-he-tong"
+      ],
+      "pagesUpdated": [],
+      "status": "success"
+    },
+    {
+      "filename": "IT组织架构图.pdf",
+      "lastIngested": 1778820969321,
+      "pagesCreated": [
+        "it-zu-zhi-jia-gou-tu",
+        "pdf-wen-dang-ge-shi",
+        "xin-xi-ji-shu-bu-men",
+        "zu-zhi-jia-gou"
+      ],
+      "pagesUpdated": [],
+      "status": "success"
+    },
+    {
+      "filename": "上海服务器迁移实施计划.pdf",
+      "lastIngested": 1778821081189,
+      "pagesCreated": [
+        "shang-hai-fu-wu-qi-qian-yi-shi-shi-ji-hua",
+        "fu-wu-qi-qian-yi-xiang-mu"
+      ],
+      "pagesUpdated": [
+        "pdf-wen-dang-ge-shi",
+        "xin-xi-ji-shu-bu-men",
+        "zu-zhi-jia-gou"
+      ],
+      "status": "success"
+    }
+  ]
+}
