@@ -486,6 +486,40 @@ a:hover {
   font-size: 13px;
 }
 
+.source-badge {
+  display: inline-block;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+  font-weight: 500;
+}
+.source-badge--done {
+  background: rgba(76, 175, 80, 0.15);
+  color: #66bb6a;
+}
+.source-badge--ingesting {
+  background: rgba(255, 183, 77, 0.15);
+  color: #ffb74d;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+.sources__status-cell {
+  font-size: 13px;
+}
+.source-status--ok {
+  color: #66bb6a;
+}
+.source-status--pending {
+  color: var(--text-secondary);
+}
+
 .sources__actions {
   display: flex;
   gap: 8px;

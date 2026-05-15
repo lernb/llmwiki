@@ -3,18 +3,27 @@ import { Link } from "react-router-dom";
 import type { SourceSummary, IngestResult } from "../api/client";
 import { getSources, uploadSource, deleteSource, ingestSource, ingestAllSources } from "../api/client";
 
+// Extended source info with ingestion status from backend
+interface SourceItem extends SourceSummary {
+  ingested: boolean;
+  lastIngested: number | null;
+  ingestStatus: string | null;
+}
+
 export default function Sources() {
-  const [sources, setSources] = useState<SourceSummary[]>([]);
+  const [sources, setSources] = useState<SourceItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [ingesting, setIngesting] = useState<string | "all" | null>(null);
+  // Track multiple concurrent ingest operations
+  const [ingestingSet, setIngestingSet] = useState<Set<string>>(new Set());
+  const [ingestingAll, setIngestingAll] = useState(false);
   const [log, setLog] = useState<IngestResult[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const fetchSources = () => {
     setLoading(true);
     getSources()
-      .then(setSources)
+      .then((data) => setSources(data as unknown as SourceItem[]))
       .catch(console.error)
       .finally(() => setLoading(false));
   };
@@ -47,7 +56,7 @@ export default function Sources() {
   };
 
   const handleIngest = async (filename: string) => {
-    setIngesting(filename);
+    setIngestingSet((prev) => new Set(prev).add(filename));
     try {
       const result = await ingestSource(filename);
       setLog((prev) => [result, ...prev]);
@@ -55,12 +64,16 @@ export default function Sources() {
     } catch (e: any) {
       alert("消化失败: " + e.message);
     } finally {
-      setIngesting(null);
+      setIngestingSet((prev) => {
+        const next = new Set(prev);
+        next.delete(filename);
+        return next;
+      });
     }
   };
 
   const handleIngestAll = async () => {
-    setIngesting("all");
+    setIngestingAll(true);
     try {
       const res = await ingestAllSources();
       setLog((prev) => [...res.results, ...prev]);
@@ -68,14 +81,23 @@ export default function Sources() {
     } catch (e: any) {
       alert("批量消化失败: " + e.message);
     } finally {
-      setIngesting(null);
+      setIngestingAll(false);
     }
   };
+
+  const isIngesting = (filename: string) => ingestingSet.has(filename);
+  const anyIngesting = ingestingSet.size > 0 || ingestingAll;
 
   const formatSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const formatTime = (ts: number | null) => {
+    if (!ts) return "";
+    const d = new Date(ts);
+    return d.toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
   };
 
   return (
@@ -84,7 +106,7 @@ export default function Sources() {
       <p className="sources__desc">上传原始文档，LLM 将读取并编译为 Wiki 页面。</p>
 
       <div className="sources__upload">
-        <input ref={fileRef} type="file" accept=".txt,.md,.pdf,.html" />
+        <input ref={fileRef} type="file" accept=".txt,.md,.pdf,.html" multiple />
         <button onClick={handleUpload} disabled={uploading}>
           {uploading ? "上传中..." : "上传"}
         </button>
@@ -105,9 +127,9 @@ export default function Sources() {
             <button
               className="btn-primary"
               onClick={handleIngestAll}
-              disabled={ingesting !== null}
+              disabled={anyIngesting}
             >
-              {ingesting === "all" ? "消化中..." : "🧠 消化全部"}
+              {ingestingAll ? "消化中..." : "🧠 消化全部"}
             </button>
           </div>
 
@@ -116,25 +138,44 @@ export default function Sources() {
               <tr>
                 <th>文件名</th>
                 <th>大小</th>
+                <th>状态</th>
                 <th>操作</th>
               </tr>
             </thead>
             <tbody>
               {sources.map((s) => (
                 <tr key={s.filename}>
-                  <td>{s.filename}</td>
+                  <td>
+                    {s.filename}
+                    {s.ingested && (
+                      <span className="source-badge source-badge--done">已消化</span>
+                    )}
+                    {isIngesting(s.filename) && (
+                      <span className="source-badge source-badge--ingesting">消化中...</span>
+                    )}
+                  </td>
                   <td>{formatSize(s.size)}</td>
+                  <td className="sources__status-cell">
+                    {s.ingested ? (
+                      <span className="source-status source-status--ok">
+                        ✅ {formatTime(s.lastIngested)}
+                      </span>
+                    ) : (
+                      <span className="source-status source-status--pending">⏳ 待消化</span>
+                    )}
+                  </td>
                   <td className="sources__actions">
                     <button
                       className="btn-primary btn-sm"
                       onClick={() => handleIngest(s.filename)}
-                      disabled={ingesting === s.filename}
+                      disabled={isIngesting(s.filename) || ingestingAll}
                     >
-                      {ingesting === s.filename ? "消化中..." : "🧠 消化"}
+                      🧠 消化
                     </button>
                     <button
                       className="btn-danger btn-sm"
                       onClick={() => handleDelete(s.filename)}
+                      disabled={isIngesting(s.filename)}
                     >
                       删除
                     </button>

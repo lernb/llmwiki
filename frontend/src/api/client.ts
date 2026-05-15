@@ -30,6 +30,9 @@ export interface SourceSummary {
   filename: string;
   size: number;
   updated: number;
+  ingested: boolean;
+  lastIngested: number | null;
+  ingestStatus: string | null;
 }
 
 export interface SearchHit {

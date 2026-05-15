@@ -11,6 +11,7 @@ import { readSource } from "../storage/fileStore.js";
 import { chat } from "./llm.js";
 import { readPage, writePage, pageExists, listPages } from "../storage/fileStore.js";
 import { buildIndex } from "./search.js";
+import { recordIngestion, removeIngestRecord } from "../storage/ingestMeta.js";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -142,6 +143,7 @@ function parseIngestionResponse(text: string): PageAction[] {
 export async function ingestSource(filename: string): Promise<IngestResult> {
   const sourceContent = readSource(filename);
   if (!sourceContent) {
+    removeIngestRecord(filename);
     return {
       status: "error",
       message: `Source file '${filename}' not found`,
@@ -188,8 +190,8 @@ export async function ingestSource(filename: string): Promise<IngestResult> {
     // Rebuild search index
     buildIndex();
 
-    // Also update the existing page list for the frontend
-    const pageList = listPages();
+    // Record ingestion metadata
+    recordIngestion(filename, "success", created, updated);
 
     return {
       status: "success",
@@ -199,6 +201,8 @@ export async function ingestSource(filename: string): Promise<IngestResult> {
       sourceFile: filename,
     };
   } catch (e: any) {
+    recordIngestion(filename, "error", [], []);
+
     return {
       status: "error",
       message: `Ingestion failed: ${e.message}`,

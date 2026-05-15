@@ -1,11 +1,26 @@
 import { Hono } from "hono";
 import { listSources, readSource, saveSource, deleteSource } from "../storage/fileStore.js";
+import { getAllIngestStatuses, getIngestStatus, removeIngestRecord } from "../storage/ingestMeta.js";
 
 const sourcesRouter = new Hono();
 
-// List all sources
+// List all sources with ingestion status
 sourcesRouter.get("/", (c) => {
-  return c.json(listSources());
+  const sources = listSources();
+  const statuses = getAllIngestStatuses();
+  const statusMap = new Map(statuses.map((s) => [s.filename, s]));
+
+  const enriched = sources.map((src) => {
+    const ingest = statusMap.get(src.filename);
+    return {
+      ...src,
+      ingested: !!ingest,
+      lastIngested: ingest?.lastIngested ?? null,
+      ingestStatus: ingest?.status ?? null,
+    };
+  });
+
+  return c.json(enriched);
 });
 
 // Upload a source file
@@ -43,6 +58,7 @@ sourcesRouter.delete("/:filename", (c) => {
   if (!deleteSource(filename)) {
     return c.json({ error: `Source '${filename}' not found` }, 404);
   }
+  removeIngestRecord(filename);
   return c.json({ status: "deleted", filename });
 });
 
