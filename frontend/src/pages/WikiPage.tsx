@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw";
 import type { PageDetail } from "../api/client";
 import { getPage } from "../api/client";
 
@@ -41,14 +42,26 @@ export default function WikiPage() {
   if (error) return <div className="error">❌ {error}</div>;
   if (!page) return <div className="error">页面不存在</div>;
 
-  // Render wiki links [[target]] as React Router links
+  // Render wiki links [[target]]:
+  //   - Resolved links → clickable React Router link
+  //   - Unresolved links → gray italic text
   const renderContent = (content: string) => {
+    // Build a set of resolved link targets for quick lookup
+    const resolvedSet = new Set(
+      (page.links || []).filter((l) => l.resolved).map((l) => l.target)
+    );
+
     const transformed = content.replace(
       /\[\[([^\]|]+)(?:\|([^\]|]+))?\]\]/g,
       (_match, target: string, display?: string) => {
         const slug = target.trim().toLowerCase().replace(/\s+/g, "-").replace(/\//g, "-");
         const text = display?.trim() || target.trim();
-        return `[${text}](/page/${slug})`;
+
+        if (resolvedSet.has(slug)) {
+          return `[${text}](/page/${slug})`;
+        }
+        // Unresolved: render as plain gray text
+        return `<span class="wiki-link-unresolved">${text}</span>`;
       }
     );
     return transformed;
@@ -61,7 +74,7 @@ export default function WikiPage() {
       </header>
 
       <div className="wiki-page__content markdown-body">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
           {renderContent(page.content)}
         </ReactMarkdown>
       </div>

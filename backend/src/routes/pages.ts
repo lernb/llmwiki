@@ -43,7 +43,10 @@ pagesRouter.get("/:slug", (c) => {
     }
   }
 
-  const links = parseLinks(content);
+  const links = parseLinks(content).map((l) => ({
+    ...l,
+    resolved: resolveLinkTarget(l.target) !== null,
+  }));
   const backlinks = getBacklinks(slug);
 
   return c.json({ slug, title, content, links, backlinks });
@@ -66,7 +69,11 @@ pagesRouter.put("/:slug", async (c) => {
       break;
     }
   }
-  return c.json({ slug, title, content, links: parseLinks(content), backlinks: getBacklinks(slug) });
+  const putLinks = parseLinks(content).map((l) => ({
+    ...l,
+    resolved: resolveLinkTarget(l.target) !== null,
+  }));
+  return c.json({ slug, title, content, links: putLinks, backlinks: getBacklinks(slug) });
 });
 
 // Delete a page

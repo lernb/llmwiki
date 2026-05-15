@@ -12,7 +12,7 @@ import { chat } from "./llm.js";
 import { readPage, writePage, pageExists, listPages } from "../storage/fileStore.js";
 import { buildIndex } from "./search.js";
 import { recordIngestion, removeIngestRecord } from "../storage/ingestMeta.js";
-import { invalidateTitleCache, fixBrokenLinks } from "./engine.js";
+import { invalidateTitleCache } from "./engine.js";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -188,12 +188,6 @@ export async function ingestSource(filename: string): Promise<IngestResult> {
       } else {
         updated.push(slug);
       }
-    }
-
-    // Fix any broken wiki links by creating stub pages
-    const stubsFixed = fixBrokenLinks();
-    if (stubsFixed > 0) {
-      console.log(`📎 自动创建 ${stubsFixed} 个占位页面（修复断裂链接）`);
     }
 
     // Rebuild search index and title cache

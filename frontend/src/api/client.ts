@@ -10,6 +10,7 @@ export interface PageSummary {
 export interface WikiLink {
   target: string;
   display: string;
+  resolved: boolean;
 }
 
 export interface Backlink {
