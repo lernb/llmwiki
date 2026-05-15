@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { listPages, readPage, writePage, deletePage } from "../storage/fileStore.js";
-import { parseLinks, getBacklinks, ensureIndexPage } from "../core/engine.js";
+import { parseLinks, getBacklinks, ensureIndexPage, resolveLinkTarget, invalidateTitleCache } from "../core/engine.js";
 import { buildIndex } from "../core/search.js";
 
 const pagesRouter = new Hono();
@@ -8,6 +8,15 @@ const pagesRouter = new Hono();
 // List all pages
 pagesRouter.get("/", (c) => {
   return c.json(listPages());
+});
+
+// Resolve a link text to actual page slug (handles Chinese→pinyin mismatch)
+pagesRouter.get("/resolve", (c) => {
+  const ref = c.req.query("ref");
+  if (!ref) return c.json({ error: "Missing ref query param" }, 400);
+  const slug = resolveLinkTarget(ref);
+  if (!slug) return c.json({ found: false, ref }, 404);
+  return c.json({ found: true, ref, slug });
 });
 
 // Ensure index page exists
@@ -46,6 +55,7 @@ pagesRouter.put("/:slug", async (c) => {
   const body = await c.req.json();
   writePage(slug, body.content);
   buildIndex();
+  invalidateTitleCache();
   // Return the updated page
   const content = readPage(slug)!;
   let title = slug;
@@ -69,6 +79,7 @@ pagesRouter.delete("/:slug", (c) => {
     return c.json({ error: `Page '${slug}' not found` }, 404);
   }
   buildIndex();
+  invalidateTitleCache();
   return c.json({ status: "deleted", slug });
 });
 

@@ -12,6 +12,7 @@ import { chat } from "./llm.js";
 import { readPage, writePage, pageExists, listPages } from "../storage/fileStore.js";
 import { buildIndex } from "./search.js";
 import { recordIngestion, removeIngestRecord } from "../storage/ingestMeta.js";
+import { invalidateTitleCache } from "./engine.js";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -187,8 +188,9 @@ export async function ingestSource(filename: string): Promise<IngestResult> {
       }
     }
 
-    // Rebuild search index
+    // Rebuild search index and title cache
     buildIndex();
+    invalidateTitleCache();
 
     // Record ingestion metadata
     recordIngestion(filename, "success", created, updated);

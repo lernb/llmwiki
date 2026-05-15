@@ -15,9 +15,29 @@ export default function WikiPage() {
     if (!slug) return;
     setLoading(true);
     setError("");
+
+    // Try fetching the page directly
     getPage(slug)
       .then(setPage)
-      .catch((e) => setError(e.message))
+      .catch(async () => {
+        // If 404, try to resolve via backend (handles Chinese→pinyin mismatch)
+        try {
+          const res = await fetch(`/api/pages/resolve?ref=${encodeURIComponent(slug)}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.found && data.slug !== slug) {
+              // Redirect to the correct slug
+              window.history.replaceState(null, "", `/page/${data.slug}`);
+              const correctPage = await getPage(data.slug);
+              setPage(correctPage);
+              return;
+            }
+          }
+          setError(`页面 "${slug}" 不存在`);
+        } catch {
+          setError(`页面 "${slug}" 不存在`);
+        }
+      })
       .finally(() => setLoading(false));
   }, [slug]);
 
@@ -25,9 +45,9 @@ export default function WikiPage() {
   if (error) return <div className="error">❌ {error}</div>;
   if (!page) return <div className="error">页面不存在</div>;
 
-  // Render wiki links [[target]] as React Router links
+  // Render wiki links [[target]] as React Router links,
+  // using the resolve endpoint to get correct slugs for links.
   const renderContent = (content: string) => {
-    // Transform [[Wiki Link]] → markdown links before rendering
     const transformed = content.replace(
       /\[\[([^\]|]+)(?:\|([^\]|]+))?\]\]/g,
       (_match, target: string, display?: string) => {

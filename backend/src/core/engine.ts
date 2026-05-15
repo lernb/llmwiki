@@ -6,8 +6,8 @@ import { listPages, readPage, writePage, pageExists } from "../storage/fileStore
 const WIKI_LINK_RE = /\[\[([^\]|]+)(?:\|([^\]|]+))?\]\]/g;
 
 export interface WikiLink {
-  target: string;
-  display: string;
+  target: string;   // slug derived from raw link text
+  display: string;  // display text
 }
 
 export function parseLinks(markdown: string): WikiLink[] {
@@ -23,6 +23,53 @@ export function parseLinks(markdown: string): WikiLink[] {
   return links;
 }
 
+// ─── Title-to-Slug Lookup ───────────────────────────────────────────
+
+let _titleSlugMap: Map<string, string> | null = null;
+
+/** Build a map of every page's title (lowercase) → slug */
+function getTitleSlugMap(): Map<string, string> {
+  if (!_titleSlugMap) {
+    _titleSlugMap = new Map();
+    for (const page of listPages()) {
+      _titleSlugMap.set(page.title.toLowerCase(), page.slug);
+      // Also store the display-friendly version
+      _titleSlugMap.set(page.slug.replace(/-/g, " "), page.slug);
+    }
+  }
+  return _titleSlugMap;
+}
+
+/** Invalidate the title map cache (call after page create/update/delete) */
+export function invalidateTitleCache(): void {
+  _titleSlugMap = null;
+}
+
+/**
+ * Resolve a link target (which may be Chinese text or a slug) to a page slug.
+ * Checks: direct slug match → display title match → fuzzy title match
+ */
+export function resolveLinkTarget(targetText: string): string | null {
+  // Direct page exists check
+  if (pageExists(targetText)) return targetText;
+
+  // Normalized slug
+  const slug = targetText.toLowerCase().replace(/\s+/g, "-").replace(/\//g, "-");
+  if (pageExists(slug)) return slug;
+
+  // Title map lookup
+  const map = getTitleSlugMap();
+  const match = map.get(targetText.toLowerCase());
+  if (match) return match;
+
+  // Also try with the display text minus hyphens (in case display has spaces)
+  const noHyphen = targetText.toLowerCase().replace(/-/g, " ");
+  const match2 = map.get(noHyphen);
+  if (match2) return match2;
+
+  return null;
+}
+
 // ─── Backlinks ───────────────────────────────────────────────────────
 
 export interface Backlink {
@@ -32,24 +79,26 @@ export interface Backlink {
 }
 
 export function getBacklinks(slug: string): Backlink[] {
-  const targetVariants = new Set([slug, slug.replace(/-/g, " ")]);
+  const page = listPages().find((p) => p.slug === slug);
+  const titleLower = page?.title.toLowerCase() || "";
   const backlinks: Backlink[] = [];
 
-  for (const page of listPages()) {
-    if (page.slug === slug) continue;
-    const content = readPage(page.slug);
+  for (const p of listPages()) {
+    if (p.slug === slug) continue;
+    const content = readPage(p.slug);
     if (!content) continue;
 
     WIKI_LINK_RE.lastIndex = 0;
     let match: RegExpExecArray | null;
     while ((match = WIKI_LINK_RE.exec(content)) !== null) {
       const rawTarget = match[1].trim().toLowerCase();
-      const targetSlug = rawTarget.replace(/\s+/g, "-").replace(/\//g, "-");
-      if (targetVariants.has(targetSlug)) {
+      // Check if this link points to the current page by slug or title
+      const resolved = resolveLinkTarget(rawTarget);
+      if (resolved === slug) {
         const start = Math.max(0, match.index - 40);
         const end = Math.min(content.length, match.index + match[0].length + 40);
         const context = content.slice(start, end).replace(/\n/g, " ").trim();
-        backlinks.push({ slug: page.slug, title: page.title, context });
+        backlinks.push({ slug: p.slug, title: p.title, context });
         break;
       }
     }
@@ -90,8 +139,9 @@ export function getGraphData(): GraphData {
     const content = readPage(page.slug);
     if (!content) continue;
     for (const link of parseLinks(content)) {
-      const target = link.target;
-      if (nodeMap.has(target) || pageExists(target)) {
+      // Resolve the link target to an actual page slug
+      const target = resolveLinkTarget(link.target);
+      if (target && target !== page.slug && nodeMap.has(target)) {
         edges.push({ source: page.slug, target, label: link.display });
       }
     }
@@ -106,21 +156,21 @@ export function ensureIndexPage(): string {
   const pages = listPages();
   if (pages.length > 0) return pages[0].slug;
 
-  const content = `# Welcome to LLM Wiki
+  const content = `# 欢迎来到 LLM Wiki
 
-This is your **persistent knowledge base**, compiled from source documents by an LLM.
+这是你的**持久化知识库**，由 LLM 从源文件中编译而成。
 
-## Getting Started
+## 快速开始
 
-1. Upload source documents (papers, articles, notes) via the **Sources** page.
-2. Run **Ingest** to have the LLM read your sources and build wiki pages.
-3. Browse the interconnected wiki pages and watch your knowledge graph grow.
+1. 前往 **源文件** 页面上传文档
+2. 运行 **消化** 让 LLM 读取源文件并构建 Wiki 页面
+3. 浏览互联的 Wiki 页面，观察知识图谱的增长
 
-## Tips
+## 小技巧
 
-- Use [[wiki links]] to connect related concepts.
-- The \`agents.md\` file controls how the LLM structures the wiki.
-- Each ingestion updates existing pages and creates new ones as needed.
+- 使用 [[wiki 链接]] 连接相关概念
+- \`agents.md\` 文件控制 LLM 如何构建 Wiki
+- 每次消化会更新已有页面并创建新页面
 `;
   writePage("index", content);
   return "index";
@@ -129,17 +179,5 @@ This is your **persistent knowledge base**, compiled from source documents by an
 // ─── Page Resolution ────────────────────────────────────────────────
 
 export function resolvePage(slugOrTitle: string): string | null {
-  // Direct slug match
-  if (pageExists(slugOrTitle)) return slugOrTitle;
-
-  // Normalize and try
-  const slug = slugOrTitle.toLowerCase().replace(/\s+/g, "-").replace(/\//g, "-");
-  if (pageExists(slug)) return slug;
-
-  // Search by title
-  for (const page of listPages()) {
-    if (page.title.toLowerCase() === slugOrTitle.toLowerCase()) return page.slug;
-  }
-
-  return null;
+  return resolveLinkTarget(slugOrTitle);
 }
