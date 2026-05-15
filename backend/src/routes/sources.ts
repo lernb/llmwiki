@@ -43,9 +43,9 @@ sourcesRouter.post("/upload", async (c) => {
 });
 
 // Read a source file
-sourcesRouter.get("/:filename", (c) => {
+sourcesRouter.get("/:filename", async (c) => {
   const filename = c.req.param("filename");
-  const content = readSource(filename);
+  const content = await readSource(filename);
   if (!content) {
     return c.json({ error: `Source '${filename}' not found` }, 404);
   }

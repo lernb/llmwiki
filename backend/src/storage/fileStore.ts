@@ -1,5 +1,9 @@
 import { readFileSync, writeFileSync, readdirSync, statSync, existsSync, unlinkSync, mkdirSync } from "node:fs";
 import { resolve, extname, basename } from "node:path";
+import { createRequire } from "node:module";
+
+const _require = createRequire(import.meta.url);
+
 import { WIKI_DIR, SOURCES_DIR } from "../config.js";
 
 // ─── Wiki Pages ─────────────────────────────────────────────────────
@@ -94,14 +98,34 @@ export function listSources(): Array<{ filename: string; size: number; updated: 
   return sources.sort((a, b) => a.filename.localeCompare(b.filename));
 }
 
-export function readSource(filename: string): string | null {
+/** Read source file content as text. Supports PDF extraction. */
+export async function readSource(filename: string): Promise<string | null> {
   const path = resolve(SOURCES_DIR, filename);
   if (!existsSync(path)) return null;
+
+  if (filename.toLowerCase().endsWith(".pdf")) {
+    return await extractPdfText(path, filename);
+  }
+
   try {
     return readFileSync(path, "utf-8");
   } catch {
-    const stat = statSync(path);
-    return `[Binary file: ${filename}, ${stat.size} bytes]`;
+    return `[Binary file: ${filename}, ${statSync(path).size} bytes]`;
+  }
+}
+
+async function extractPdfText(path: string, filename: string): Promise<string | null> {
+  try {
+    const dataBuffer = readFileSync(path);
+    const pdfParse = _require("pdf-parse");
+    const data = await pdfParse(dataBuffer);
+    const text = (data.text || "").trim();
+    if (text.length < 20) {
+      return `[PDF: ${filename}, ${(statSync(path).size / 1024).toFixed(0)} KB — 未能提取文字内容]`;
+    }
+    return text;
+  } catch (e: any) {
+    return `[PDF解析失败: ${e.message}]`;
   }
 }
 

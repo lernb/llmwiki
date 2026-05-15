@@ -66,7 +66,7 @@ function buildIngestionPrompt(
 **Filename:** ${sourceFilename}
 
 \`\`\`
-${sourceContent.slice(0, 8000)}
+${sourceContent.slice(0, 30000)}
 \`\`\`
 
 ## Existing Wiki Pages
@@ -92,11 +92,13 @@ Return a JSON object with the following structure — and ONLY valid JSON, no ex
 \`\`\`
 
 Guidelines:
-- **CRITICAL: Write page titles, headings, and content in Chinese (简体中文).** Only technical terms (e.g., GPT, Transformer) may stay in English.
-- Each page should be self-contained Markdown with proper headings.
+- **CRITICAL: Write page titles, headings, and content in Chinese (简体中文).** Only technical terms may stay in English.
+- **Be comprehensive.** Extract all important details, data, and insights from the source. Pages should be detailed — aim for 300-1000 words per page depending on the source richness.
+- Use multiple sections (\`## Section\`, \`### Subsection\`) to organize information.
+- Each page should be self-contained Markdown with proper structure.
 - Use [[Wiki Links]] to connect related concepts.
-- For existing pages, return "action": "update" with the FULL new content of the page (not just the diff).
-- Create no more than 5 pages per ingestion to stay focused.
+- For existing pages, return "action": "update" with the FULL new content (not just a diff).
+- Create 3-8 pages as needed to fully cover the source content.
 - The first page should be the most important concept from this source.`;
 }
 
@@ -142,7 +144,7 @@ function parseIngestionResponse(text: string): PageAction[] {
 // ─── Ingestion entry point ──────────────────────────────────────────
 
 export async function ingestSource(filename: string): Promise<IngestResult> {
-  const sourceContent = readSource(filename);
+  const sourceContent = await readSource(filename);
   if (!sourceContent) {
     removeIngestRecord(filename);
     return {
@@ -166,7 +168,7 @@ export async function ingestSource(filename: string): Promise<IngestResult> {
   try {
     const response = await chat(
       [{ role: "user", content: userPrompt }],
-      { system: systemPrompt, temperature: 0.3, maxTokens: 4096 }
+      { system: systemPrompt, temperature: 0.3, maxTokens: 8192 }
     );
 
     const pageActions = parseIngestionResponse(response);

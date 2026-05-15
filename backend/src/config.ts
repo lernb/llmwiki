@@ -45,7 +45,7 @@ export const DEEPSEEK_API_KEY = resolveSecret(
   dotenvValues["DEEPSEEK_API_KEY"]
 );
 export const DEEPSEEK_BASE_URL = process.env.DEEPSEEK_BASE_URL || dotenvValues["DEEPSEEK_BASE_URL"] || "https://api.deepseek.com/v1";
-export const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || dotenvValues["DEEPSEEK_MODEL"] || "deepseek-chat";
+export const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || dotenvValues["DEEPSEEK_MODEL"] || "deepseek-v4-flash";
 
 // Server
 export const HOST = process.env.HOST || "127.0.0.1";

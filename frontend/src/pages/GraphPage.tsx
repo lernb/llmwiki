@@ -206,15 +206,16 @@ export default function GraphPage() {
 
     // Drag to pan
     const handleMouseDown = (e: MouseEvent) => {
+      dragStartRef.current = { x: e.offsetX, y: e.offsetY };
+      dragStartViewRef.current = { x: view.offsetX, y: view.offsetY };
+
       // Only drag on background (not on a node)
       const hit = hitTest(e.offsetX, e.offsetY);
       if (hit) {
-        // Will be handled by click handler
+        // Click on node — will be handled by handleClick
         return;
       }
       draggingRef.current = true;
-      dragStartRef.current = { x: e.offsetX, y: e.offsetY };
-      dragStartViewRef.current = { x: view.offsetX, y: view.offsetY };
       canvas.style.cursor = "grabbing";
     };
 
