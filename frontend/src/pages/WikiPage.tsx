@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { PageDetail } from "../api/client";
@@ -7,6 +7,7 @@ import { getPage } from "../api/client";
 
 export default function WikiPage() {
   const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
   const [page, setPage] = useState<PageDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -16,22 +17,17 @@ export default function WikiPage() {
     setLoading(true);
     setError("");
 
-    // Try fetching the page directly
     getPage(slug)
       .then(setPage)
       .catch(async () => {
-        // If 404, try to resolve via backend (handles Chinese→pinyin mismatch)
+        // 404 — try resolve Chinese slug → real slug
         try {
           const res = await fetch(`/api/pages/resolve?ref=${encodeURIComponent(slug)}`);
-          if (res.ok) {
-            const data = await res.json();
-            if (data.found && data.slug !== slug) {
-              // Redirect to the correct slug
-              window.history.replaceState(null, "", `/page/${data.slug}`);
-              const correctPage = await getPage(data.slug);
-              setPage(correctPage);
-              return;
-            }
+          const data = await res.json();
+          if (data.found && data.slug !== slug) {
+            // Navigate to the correct slug — React Router will remount with new slug
+            navigate(`/page/${data.slug}`, { replace: true });
+            return;
           }
           setError(`页面 "${slug}" 不存在`);
         } catch {
@@ -39,14 +35,13 @@ export default function WikiPage() {
         }
       })
       .finally(() => setLoading(false));
-  }, [slug]);
+  }, [slug, navigate]);
 
   if (loading) return <div className="loading">加载中...</div>;
   if (error) return <div className="error">❌ {error}</div>;
   if (!page) return <div className="error">页面不存在</div>;
 
-  // Render wiki links [[target]] as React Router links,
-  // using the resolve endpoint to get correct slugs for links.
+  // Render wiki links [[target]] as React Router links
   const renderContent = (content: string) => {
     const transformed = content.replace(
       /\[\[([^\]|]+)(?:\|([^\]|]+))?\]\]/g,

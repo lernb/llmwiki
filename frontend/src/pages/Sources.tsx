@@ -170,7 +170,7 @@ export default function Sources() {
                       onClick={() => handleIngest(s.filename)}
                       disabled={isIngesting(s.filename) || ingestingAll}
                     >
-                      🧠 消化
+                      {isIngesting(s.filename) ? "消化中..." : s.ingested ? "🔄 重新消化" : "🧠 消化"}
                     </button>
                     <button
                       className="btn-danger btn-sm"
