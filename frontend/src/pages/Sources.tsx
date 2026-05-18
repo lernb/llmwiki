@@ -202,7 +202,7 @@ export default function Sources() {
                       className="btn-download btn-sm"
                       download={s.filename}
                     >
-                      📥
+                      下载
                     </a>
                     <button
                       className="btn-danger btn-sm"

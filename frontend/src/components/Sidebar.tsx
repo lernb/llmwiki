@@ -17,26 +17,45 @@ export default function Sidebar({ open, onToggle }: Props) {
     getPages().then(setPages).catch(console.error);
   };
 
-  const [newSlugs, setNewSlugs] = useState<Set<string>>(new Set());
-  const [newTopSlugs, setNewTopSlugs] = useState<string[]>([]);
+  // Persistent new-page tracking via localStorage
+  const [newSlugs, setNewSlugs] = useState<Set<string>>(() => {
+    const stored = localStorage.getItem("llmwiki-new-pages");
+    return stored ? new Set(JSON.parse(stored)) : new Set();
+  });
+  const [newTopSlugs, setNewTopSlugs] = useState<string[]>(() => {
+    const stored = localStorage.getItem("llmwiki-new-pages");
+    return stored ? JSON.parse(stored) : [];
+  });
+
+  // Persist newSlugs to localStorage
+  const saveNewSlugs = (slugs: string[]) => {
+    localStorage.setItem("llmwiki-new-pages", JSON.stringify(slugs));
+    setNewSlugs(new Set(slugs));
+    setNewTopSlugs(slugs);
+  };
 
   useEffect(() => {
     fetchPages();
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (detail?.created?.length > 0) {
-        setNewSlugs(new Set(detail.created));
-        setNewTopSlugs(detail.created);
-        setTimeout(() => {
-          setNewSlugs(new Set());
-          setNewTopSlugs([]);
-        }, 8000);
+        const existing = JSON.parse(localStorage.getItem("llmwiki-new-pages") || "[]");
+        const merged = [...new Set([...existing, ...detail.created])];
+        saveNewSlugs(merged);
       }
       fetchPages();
     };
     window.addEventListener("pages-updated", handler);
     return () => window.removeEventListener("pages-updated", handler);
   }, []);
+
+  // Mark page as seen when navigated to
+  const markSeen = (slug: string) => {
+    if (newSlugs.has(slug)) {
+      const updated = newTopSlugs.filter((s) => s !== slug);
+      saveNewSlugs(updated);
+    }
+  };
 
   // Sort: new pages first, then alphabetical
   const sortedPages = [...pages].sort((a, b) => {
@@ -119,6 +138,7 @@ export default function Sidebar({ open, onToggle }: Props) {
               key={p.slug}
               to={`/page/${p.slug}`}
               className={`sidebar__page-link${isNew ? " sidebar__page-link--new" : ""}`}
+              onClick={() => markSeen(p.slug)}
             >
               {isNew && <span className="new-dot">●</span>}
               <span className={isNew ? "new-title" : ""}>{p.title}</span>

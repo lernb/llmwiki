@@ -241,10 +241,6 @@ a:hover {
   line-height: 1.3;
   transition: background 0.12s, color 0.12s;
 }
-.sidebar__page-link--new {
-  animation: newPageFade 7s ease-out forwards;
-}
-
 .new-dot {
   color: var(--accent);
   margin-right: 4px;
@@ -256,10 +252,6 @@ a:hover {
   font-weight: 700;
 }
 
-@keyframes newPageFade {
-  0%   { background: rgba(79, 195, 247, 0.15); }
-  100% { background: transparent; }
-}
 
 .sidebar__page-link:hover {
   background: var(--bg-hover);
