@@ -149,19 +149,25 @@ export default function GraphPage() {
         ctx!.stroke();
       }
 
-      // Nodes
+      // Nodes — color hierarchy: 0=amber/gray, low=teal/green, high=blue/cyan
       for (const node of nodes) {
         const ratio = node.edgeCount / maxE;
-        const r = Math.max(4, 4 + ratio * 14);
-        const hue = 205 - ratio * 35;
+        const r = Math.max(4, 3 + ratio * 18);
+
+        // Hue: 40 (amber) → 140 (green) → 200 (cyan) → 240 (blue)
+        let hue: number;
+        if (ratio < 0.15) hue = 40;           // amber (few links)
+        else if (ratio < 0.4) hue = 140;       // green
+        else if (ratio < 0.7) hue = 190;       // cyan
+        else hue = 220;                        // blue (many links)
 
         let fill: string, stroke: string;
         if (isDark) {
-          fill = `hsl(${hue}, 70%, ${42 + ratio * 20}%)`;
-          stroke = `hsl(${hue}, 60%, ${58 + ratio * 15}%)`;
+          fill = `hsl(${hue}, ${50 + ratio * 30}%, ${35 + ratio * 25}%)`;
+          stroke = `hsl(${hue}, 65%, ${55 + ratio * 15}%)`;
         } else {
-          fill = `hsl(${hue}, 55%, ${40 - ratio * 8}%)`;
-          stroke = `hsl(${hue}, 50%, ${30 - ratio * 5}%)`;
+          fill = `hsl(${hue}, ${45 + ratio * 20}%, ${35 + ratio * 5}%)`;
+          stroke = `hsl(${hue}, 50%, ${25 + ratio * 10}%)`;
         }
 
         ctx!.beginPath();
