@@ -12,6 +12,11 @@ export default function Layout({ children }: Props) {
     <div className="layout">
       <Sidebar open={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
       <main className={`main ${sidebarOpen ? "" : "main--expanded"}`}>
+        {!sidebarOpen && (
+          <button className="sidebar-reopen" onClick={() => setSidebarOpen(true)}>
+            ▶
+          </button>
+        )}
         {children}
       </main>
     </div>

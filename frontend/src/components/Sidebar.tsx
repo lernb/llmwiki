@@ -33,7 +33,7 @@ export default function Sidebar({ open, onToggle }: Props) {
 
   // Theme toggle
   const [theme, setTheme] = useState(() => {
-    return localStorage.getItem("llmwiki-theme") || "dark";
+    return localStorage.getItem("llmwiki-theme") || "light";
   });
 
   const toggleTheme = () => {
