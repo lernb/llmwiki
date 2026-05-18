@@ -242,12 +242,22 @@ a:hover {
   transition: background 0.12s, color 0.12s;
 }
 .sidebar__page-link--new {
-  border-left: 2px solid var(--accent);
   animation: newPageFade 7s ease-out forwards;
 }
 
+.new-dot {
+  color: var(--accent);
+  margin-right: 4px;
+  font-size: 10px;
+  vertical-align: middle;
+}
+
+.new-title {
+  font-weight: 700;
+}
+
 @keyframes newPageFade {
-  0%   { background: rgba(79, 195, 247, 0.2); }
+  0%   { background: rgba(79, 195, 247, 0.15); }
   100% { background: transparent; }
 }
 
@@ -690,9 +700,30 @@ a:hover {
   color: var(--text-secondary);
 }
 
+.btn-download {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  text-decoration: none;
+  transition: background 0.12s, color 0.12s;
+}
+.btn-download:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
 .sources__actions {
   display: flex;
   gap: 8px;
+  align-items: center;
 }
 
 /* Sources - Ingest log */

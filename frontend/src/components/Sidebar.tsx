@@ -18,6 +18,7 @@ export default function Sidebar({ open, onToggle }: Props) {
   };
 
   const [newSlugs, setNewSlugs] = useState<Set<string>>(new Set());
+  const [newTopSlugs, setNewTopSlugs] = useState<string[]>([]);
 
   useEffect(() => {
     fetchPages();
@@ -25,14 +26,26 @@ export default function Sidebar({ open, onToggle }: Props) {
       const detail = (e as CustomEvent).detail;
       if (detail?.created?.length > 0) {
         setNewSlugs(new Set(detail.created));
-        // Clear highlight after 8 seconds
-        setTimeout(() => setNewSlugs(new Set()), 8000);
+        setNewTopSlugs(detail.created);
+        setTimeout(() => {
+          setNewSlugs(new Set());
+          setNewTopSlugs([]);
+        }, 8000);
       }
       fetchPages();
     };
     window.addEventListener("pages-updated", handler);
     return () => window.removeEventListener("pages-updated", handler);
   }, []);
+
+  // Sort: new pages first, then alphabetical
+  const sortedPages = [...pages].sort((a, b) => {
+    const aNew = newTopSlugs.includes(a.slug);
+    const bNew = newTopSlugs.includes(b.slug);
+    if (aNew && !bNew) return -1;
+    if (!aNew && bNew) return 1;
+    return a.title.localeCompare(b.title, "zh");
+  });
 
   // Poll health status
   useEffect(() => {
@@ -99,15 +112,19 @@ export default function Sidebar({ open, onToggle }: Props) {
 
       <div className="sidebar__divider">页面</div>
       <div className="sidebar__pages">
-        {pages.map((p) => (
-          <Link
-            key={p.slug}
-            to={`/page/${p.slug}`}
-            className={`sidebar__page-link${newSlugs.has(p.slug) ? " sidebar__page-link--new" : ""}`}
-          >
-            {p.title}
-          </Link>
-        ))}
+        {sortedPages.map((p) => {
+          const isNew = newSlugs.has(p.slug);
+          return (
+            <Link
+              key={p.slug}
+              to={`/page/${p.slug}`}
+              className={`sidebar__page-link${isNew ? " sidebar__page-link--new" : ""}`}
+            >
+              {isNew && <span className="new-dot">●</span>}
+              <span className={isNew ? "new-title" : ""}>{p.title}</span>
+            </Link>
+          );
+        })}
       </div>
 
       <div className="sidebar__footer">

@@ -1,6 +1,9 @@
 import { Hono } from "hono";
+import { statSync, existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { listSources, readSource, saveSource, deleteSource } from "../storage/fileStore.js";
 import { getAllIngestStatuses, getIngestStatus, removeIngestRecord } from "../storage/ingestMeta.js";
+import { SOURCES_DIR } from "../config.js";
 
 const sourcesRouter = new Hono();
 
@@ -50,6 +53,38 @@ sourcesRouter.get("/:filename", async (c) => {
     return c.json({ error: `Source '${filename}' not found` }, 404);
   }
   return c.json({ filename, content });
+});
+
+// Download a source file
+sourcesRouter.get("/:filename/download", (c) => {
+  const filename = c.req.param("filename");
+  const path = resolve(SOURCES_DIR, filename);
+  if (!existsSync(path)) {
+    return c.json({ error: `Source '${filename}' not found` }, 404);
+  }
+  const content = readFileSync(path);
+  const ext = filename.split(".").pop()?.toLowerCase() || "bin";
+  const mime: Record<string, string> = {
+    pdf: "application/pdf",
+    md: "text/markdown",
+    txt: "text/plain",
+    doc: "application/msword",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    xls: "application/vnd.ms-excel",
+    xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+  };
+  return c.body(
+    content,
+    200,
+    {
+      "Content-Type": mime[ext] || "application/octet-stream",
+      "Content-Disposition": `attachment; filename="${encodeURIComponent(filename)}"`,
+      "Content-Length": String(content.length),
+    }
+  );
 });
 
 // Delete a source file

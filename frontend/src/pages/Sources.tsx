@@ -197,6 +197,13 @@ export default function Sources() {
                     >
                       {isIngesting(s.filename) ? "消化中..." : s.ingested ? "🔄 重新消化" : "🧠 消化"}
                     </button>
+                    <a
+                      href={`/api/sources/${encodeURIComponent(s.filename)}/download`}
+                      className="btn-download btn-sm"
+                      download={s.filename}
+                    >
+                      📥
+                    </a>
                     <button
                       className="btn-danger btn-sm"
                       onClick={() => handleDelete(s.filename)}
