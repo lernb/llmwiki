@@ -30,3 +30,4 @@ echo   前端: http://localhost:3000
 echo.
 echo   关闭窗口即可停止服务，或运行 stop.bat
 echo ========================================
+pause
