@@ -615,6 +615,13 @@ a:hover {
   border-bottom: 1px solid var(--border);
 }
 
+.sources__table td:first-child {
+  max-width: 300px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .sources__table th {
   color: var(--text-secondary);
   font-size: 13px;
