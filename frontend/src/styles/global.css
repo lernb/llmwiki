@@ -229,6 +229,7 @@ a:hover {
   padding: 32px 40px;
   height: 100vh;
   overflow-y: auto;
+  position: relative;
 }
 
 /* 侧边栏展开按钮（收起时显示） */
@@ -858,15 +859,17 @@ a:hover {
 /* ─── Graph Page ──────────────────────────────────────────────────── */
 
 .graph-page {
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  width: 100%;
+  background: var(--bg-primary);
+  z-index: 1;
 }
 
 .graph-page__header {
   flex-shrink: 0;
-  margin-bottom: 12px;
+  padding: 24px 40px 8px;
 }
 
 .graph-page__header h1 {
@@ -893,7 +896,6 @@ a:hover {
   min-height: 0;
   cursor: pointer;
   display: block;
-  border-radius: 8px;
 }
 
 /* ─── Search Page ─────────────────────────────────────────────────── */
