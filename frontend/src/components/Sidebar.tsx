@@ -13,8 +13,15 @@ export default function Sidebar({ open, onToggle }: Props) {
   const [search, setSearch] = useState("");
   const navigate = useNavigate();
 
-  useEffect(() => {
+  const fetchPages = () => {
     getPages().then(setPages).catch(console.error);
+  };
+
+  useEffect(() => {
+    fetchPages();
+    // Listen for page updates after ingestion
+    window.addEventListener("pages-updated", fetchPages);
+    return () => window.removeEventListener("pages-updated", fetchPages);
   }, []);
 
   // Poll health status

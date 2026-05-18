@@ -55,6 +55,10 @@ export default function Sources() {
     }
   };
 
+  const notifyPagesUpdated = () => {
+    window.dispatchEvent(new Event("pages-updated"));
+  };
+
   const handleIngest = async (filename: string, isReingest: boolean) => {
     if (isReingest && !confirm(`"${filename}" 已消化过，确定要重新消化吗？`)) return;
     if (!isReingest && !confirm(`确定要消化 "${filename}" 吗？这将消耗 API 额度。`)) return;
@@ -63,6 +67,7 @@ export default function Sources() {
       const result = await ingestSource(filename);
       setLog((prev) => [result, ...prev]);
       fetchSources();
+      notifyPagesUpdated();
     } catch (e: any) {
       alert("消化失败: " + e.message);
     } finally {
@@ -81,6 +86,7 @@ export default function Sources() {
       const res = await ingestAllSources();
       setLog((prev) => [...res.results, ...prev]);
       fetchSources();
+      notifyPagesUpdated();
     } catch (e: any) {
       alert("批量消化失败: " + e.message);
     } finally {
