@@ -14,6 +14,26 @@ import { buildIndex } from "./search.js";
 import { recordIngestion, removeIngestRecord } from "../storage/ingestMeta.js";
 import { invalidateTitleCache } from "./engine.js";
 
+// ─── Cancellation tracking ──────────────────────────────────────────
+const abortControllers = new Map<string, AbortController>();
+
+export function cancelIngestion(filename: string): boolean {
+  const controller = abortControllers.get(filename);
+  if (!controller) return false;
+  controller.abort();
+  abortControllers.delete(filename);
+  return true;
+}
+
+export function cancelAllIngestions(): number {
+  const count = abortControllers.size;
+  for (const [name] of abortControllers) {
+    abortControllers.get(name)?.abort();
+  }
+  abortControllers.clear();
+  return count;
+}
+
 // ─── Types ──────────────────────────────────────────────────────────
 
 export interface IngestResult {
@@ -165,11 +185,16 @@ export async function ingestSource(filename: string): Promise<IngestResult> {
   // Build the user prompt
   const userPrompt = buildIngestionPrompt(sourceContent, filename, existingPages);
 
+  // Create abort controller for this ingestion
+  const controller = new AbortController();
+  abortControllers.set(filename, controller);
+
   try {
     const response = await chat(
       [{ role: "user", content: userPrompt }],
-      { system: systemPrompt, temperature: 0.3, maxTokens: 8192 }
+      { system: systemPrompt, temperature: 0.3, maxTokens: 8192, signal: controller.signal }
     );
+    abortControllers.delete(filename);
 
     const pageActions = parseIngestionResponse(response);
     const created: string[] = [];
@@ -205,11 +230,13 @@ export async function ingestSource(filename: string): Promise<IngestResult> {
       sourceFile: filename,
     };
   } catch (e: any) {
+    abortControllers.delete(filename);
+    const aborted = e.name === "AbortError" || e.message?.includes("abort");
     recordIngestion(filename, "error", [], []);
 
     return {
-      status: "error",
-      message: `Ingestion failed: ${e.message}`,
+      status: aborted ? "cancelled" : "error",
+      message: aborted ? "已取消消化" : `消化失败: ${e.message}`,
       pagesCreated: [],
       pagesUpdated: [],
       sourceFile: filename,

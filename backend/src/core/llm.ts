@@ -51,6 +51,7 @@ export interface ChatOptions {
   temperature?: number;
   maxTokens?: number;
   system?: string;
+  signal?: AbortSignal;
 }
 
 /**
@@ -74,7 +75,7 @@ export async function chat(
     messages: allMessages,
     temperature: options.temperature ?? 0.3,
     max_tokens: options.maxTokens ?? 4096,
-  });
+  }, { signal: options.signal });
 
   const text = resp.choices?.[0]?.message?.content;
   if (!text) {

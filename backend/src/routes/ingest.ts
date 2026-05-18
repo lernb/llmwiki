@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { ingestSource, ingestAllSources, IngestResult } from "../core/ingester.js";
+import { ingestSource, ingestAllSources, IngestResult, cancelIngestion, cancelAllIngestions } from "../core/ingester.js";
 
 const ingestRouter = new Hono();
 
@@ -24,6 +24,19 @@ ingestRouter.post("/", async (c) => {
   } catch (e: any) {
     return c.json({ status: "error", message: e.message, results: [] }, 500);
   }
+});
+
+// Cancel a specific ingestion
+ingestRouter.post("/cancel/:filename", (c) => {
+  const filename = c.req.param("filename");
+  const cancelled = cancelIngestion(filename);
+  return c.json({ status: cancelled ? "cancelled" : "not_found", filename });
+});
+
+// Cancel all running ingestions
+ingestRouter.post("/cancel-all", (c) => {
+  const count = cancelAllIngestions();
+  return c.json({ status: "cancelled", count });
 });
 
 export { ingestRouter };

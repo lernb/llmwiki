@@ -66,6 +66,8 @@ export default function Sources() {
     );
   };
 
+  const [cancelling, setCancelling] = useState<Set<string>>(new Set());
+
   const handleIngest = async (filename: string, isReingest: boolean) => {
     if (isReingest && !confirm(`"${filename}" 已消化过，确定要重新消化吗？`)) return;
     if (!isReingest && !confirm(`确定要消化 "${filename}" 吗？这将消耗 API 额度。`)) return;
@@ -79,6 +81,27 @@ export default function Sources() {
       alert("消化失败: " + e.message);
     } finally {
       setIngestingSet((prev) => {
+        const next = new Set(prev);
+        next.delete(filename);
+        return next;
+      });
+    }
+  };
+
+  const handleCancel = async (filename: string) => {
+    setCancelling((prev) => new Set(prev).add(filename));
+    try {
+      await fetch(`/api/ingest/cancel/${encodeURIComponent(filename)}`, { method: "POST" });
+      setIngestingSet((prev) => {
+        const next = new Set(prev);
+        next.delete(filename);
+        return next;
+      });
+      fetchSources();
+    } catch {
+      // ignore
+    } finally {
+      setCancelling((prev) => {
         const next = new Set(prev);
         next.delete(filename);
         return next;
@@ -149,13 +172,22 @@ export default function Sources() {
       ) : (
         <>
           <div style={{ marginBottom: 12, display: "flex", gap: 8 }}>
-            <button
-              className="btn-primary"
-              onClick={handleIngestAll}
-              disabled={anyIngesting}
-            >
-              {ingestingAll ? "消化中..." : "🧠 消化全部"}
-            </button>
+            {ingestingAll ? (
+              <button
+                className="btn-ingesting-all"
+                onClick={() => fetch("/api/ingest/cancel-all", { method: "POST" })}
+              >
+                ⏹ 停止全部
+              </button>
+            ) : (
+              <button
+                className="btn-primary"
+                onClick={handleIngestAll}
+                disabled={anyIngesting}
+              >
+                🧠 消化全部
+              </button>
+            )}
           </div>
 
           <table className="sources__table">
@@ -170,18 +202,12 @@ export default function Sources() {
             <tbody>
               {sources.map((s) => (
                 <tr key={s.filename}>
-                  <td>
-                    {s.filename}
-                    {s.ingested && (
-                      <span className="source-badge source-badge--done">已消化</span>
-                    )}
-                    {isIngesting(s.filename) && (
-                      <span className="source-badge source-badge--ingesting">消化中...</span>
-                    )}
-                  </td>
+                  <td>{s.filename}</td>
                   <td>{formatSize(s.size)}</td>
                   <td className="sources__status-cell">
-                    {s.ingested ? (
+                    {isIngesting(s.filename) ? (
+                      <span className="source-status source-status--ingesting">⏳ 消化中...</span>
+                    ) : s.ingested ? (
                       <span className="source-status source-status--ok">
                         ✅ {formatTime(s.lastIngested)}
                       </span>
@@ -190,13 +216,23 @@ export default function Sources() {
                     )}
                   </td>
                   <td className="sources__actions">
-                    <button
-                      className="btn-primary btn-sm"
-                      onClick={() => handleIngest(s.filename, s.ingested)}
-                      disabled={isIngesting(s.filename) || ingestingAll}
-                    >
-                      {isIngesting(s.filename) ? "消化中..." : s.ingested ? "🔄 重新消化" : "🧠 消化"}
-                    </button>
+                    {isIngesting(s.filename) ? (
+                      <button
+                        className="btn-danger btn-sm btn-ingesting"
+                        onClick={() => handleCancel(s.filename)}
+                        disabled={cancelling.has(s.filename)}
+                      >
+                        停止
+                      </button>
+                    ) : (
+                      <button
+                        className="btn-primary btn-sm"
+                        onClick={() => handleIngest(s.filename, s.ingested)}
+                        disabled={ingestingAll}
+                      >
+                        {s.ingested ? "🔄 重新消化" : "🧠 消化"}
+                      </button>
+                    )}
                     <a
                       href={`/api/sources/${encodeURIComponent(s.filename)}/download`}
                       className="btn-download btn-sm"

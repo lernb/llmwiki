@@ -151,6 +151,14 @@ export function ingestAllSources(): Promise<{ status: string; message: string; r
   });
 }
 
+export function cancelIngestion(filename: string): Promise<{ status: string }> {
+  return fetchJSON(`/ingest/cancel/${encodeURIComponent(filename)}`, { method: "POST" });
+}
+
+export function cancelAllIngestions(): Promise<{ status: string; count: number }> {
+  return fetchJSON("/ingest/cancel-all", { method: "POST" });
+}
+
 // Query
 export function queryWiki(question: string): Promise<QueryResponse> {
   return fetchJSON("/query", {
