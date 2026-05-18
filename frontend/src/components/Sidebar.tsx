@@ -81,14 +81,6 @@ export default function Sidebar({ open, onToggle }: Props) {
       </nav>
 
       <div className="sidebar__divider">页面</div>
-      <div className="sidebar__footer">
-        <button className="theme-toggle" onClick={toggleTheme} title={theme === "dark" ? "切换到浅色" : "切换到深色"}>
-          {theme === "dark" ? "☀️" : "🌙"}
-        </button>
-        <span className={`status-dot status-dot--${status}`}></span>
-        <span className="status-text">{status === "online" ? "已连接" : "未连接"}</span>
-      </div>
-
       <div className="sidebar__pages">
         {pages.map((p) => (
           <Link
@@ -99,6 +91,14 @@ export default function Sidebar({ open, onToggle }: Props) {
             {p.title}
           </Link>
         ))}
+      </div>
+
+      <div className="sidebar__footer">
+        <button className="theme-toggle" onClick={toggleTheme} title={theme === "dark" ? "切换到浅色" : "切换到深色"}>
+          {theme === "dark" ? "☀️" : "🌙"}
+        </button>
+        <span className={`status-dot status-dot--${status}`}></span>
+        <span className="status-text">{status === "online" ? "已连接" : "未连接"}</span>
       </div>
     </aside>
   );
