@@ -602,12 +602,16 @@ a:hover {
 .btn-primary {
   padding: 8px 20px;
   background: var(--accent);
-  color: #000;
+  color: #fff;
   border: none;
   border-radius: 6px;
   cursor: pointer;
   font-weight: 600;
   font-size: 14px;
+}
+
+[data-theme="light"] .btn-primary {
+  color: #fff;
 }
 .btn-primary:disabled {
   opacity: 0.5;

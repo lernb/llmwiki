@@ -55,7 +55,9 @@ export default function Sources() {
     }
   };
 
-  const handleIngest = async (filename: string) => {
+  const handleIngest = async (filename: string, isReingest: boolean) => {
+    if (isReingest && !confirm(`"${filename}" 已消化过，确定要重新消化吗？`)) return;
+    if (!isReingest && !confirm(`确定要消化 "${filename}" 吗？这将消耗 API 额度。`)) return;
     setIngestingSet((prev) => new Set(prev).add(filename));
     try {
       const result = await ingestSource(filename);
@@ -73,6 +75,7 @@ export default function Sources() {
   };
 
   const handleIngestAll = async () => {
+    if (!confirm(`确定要消化全部 ${sources.length} 个源文件吗？这将消耗 API 额度。`)) return;
     setIngestingAll(true);
     try {
       const res = await ingestAllSources();
@@ -175,7 +178,7 @@ export default function Sources() {
                   <td className="sources__actions">
                     <button
                       className="btn-primary btn-sm"
-                      onClick={() => handleIngest(s.filename)}
+                      onClick={() => handleIngest(s.filename, s.ingested)}
                       disabled={isIngesting(s.filename) || ingestingAll}
                     >
                       {isIngesting(s.filename) ? "消化中..." : s.ingested ? "🔄 重新消化" : "🧠 消化"}
