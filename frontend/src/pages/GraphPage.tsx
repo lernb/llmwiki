@@ -3,16 +3,23 @@ import { useNavigate } from "react-router-dom";
 import type { GraphData } from "../api/client";
 import { getGraph } from "../api/client";
 
+/** 读取当前主题的 CSS 变量值 */
+function cssVar(name: string): string {
+  try {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || "#888";
+  } catch {
+    return "#888";
+  }
+}
+
 export default function GraphPage() {
   const [graph, setGraph] = useState<GraphData | null>(null);
   const [loading, setLoading] = useState(true);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const navigate = useNavigate();
-
-  // Store graph layout data so it persists across re-renders
   const layoutRef = useRef<{
-    nodes: Array<{ id: string; label: string; x: number; y: number }>;
-    nodeMap: Map<string, { id: string; label: string; x: number; y: number }>;
+    nodes: Array<{ id: string; label: string; x: number; y: number; edgeCount: number }>;
+    nodeMap: Map<string, { id: string; label: string; x: number; y: number; edgeCount: number }>;
   } | null>(null);
 
   const viewRef = useRef({ offsetX: 0, offsetY: 0, scale: 1 });
@@ -27,13 +34,11 @@ export default function GraphPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Compute force layout when graph data changes
   useEffect(() => {
     if (!graph || graph.nodes.length === 0) return;
-    layoutRef.current = null; // force recompute
+    layoutRef.current = null;
   }, [graph]);
 
-  // Render the canvas
   useEffect(() => {
     if (!graph || !canvasRef.current || graph.nodes.length === 0) return;
 
@@ -41,19 +46,31 @@ export default function GraphPage() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Resize canvas
-    const dpr = window.devicePixelRatio || 1;
-    const W = canvas.clientWidth;
-    const H = canvas.clientHeight;
-    canvas.width = W * dpr;
-    canvas.height = H * dpr;
-    ctx.scale(dpr, dpr);
+    const resizeCanvas = () => {
+      const dpr = window.devicePixelRatio || 1;
+      const W = canvas.clientWidth;
+      const H = canvas.clientHeight;
+      canvas.width = W * dpr;
+      canvas.height = H * dpr;
+      ctx.scale(dpr, dpr);
+      return { W, H };
+    };
 
-    // Compute layout only once
+    let { W, H } = resizeCanvas();
+
     if (!layoutRef.current) {
       const centerX = W / 2;
       const centerY = H / 2;
       const radius = Math.min(W, H) * 0.35;
+
+      // Count edges per node
+      const edgeCount = new Map<string, number>();
+      for (const n of graph.nodes) edgeCount.set(n.id, 0);
+      for (const e of graph.edges) {
+        edgeCount.set(e.source, (edgeCount.get(e.source) || 0) + 1);
+        edgeCount.set(e.target, (edgeCount.get(e.target) || 0) + 1);
+      }
+      const maxEdges = Math.max(...Array.from(edgeCount.values()), 1);
 
       const nodes = graph.nodes.map((n, i) => ({
         id: n.id,
@@ -62,6 +79,8 @@ export default function GraphPage() {
         y: centerY + radius * Math.sin((2 * Math.PI * i) / graph.nodes.length),
         vx: 0,
         vy: 0,
+        edgeCount: edgeCount.get(n.id) || 0,
+        maxEdges,
       }));
 
       const nodeMap = new Map(nodes.map((n) => [n.id, n]));
@@ -87,7 +106,6 @@ export default function GraphPage() {
             nodes[j].vy += fy;
           }
         }
-
         for (const edge of graph.edges) {
           const source = nodeMap.get(edge.source);
           const target = nodeMap.get(edge.target);
@@ -103,13 +121,9 @@ export default function GraphPage() {
           target.vx -= fx;
           target.vy -= fy;
         }
-
         for (const node of nodes) {
           node.vx += (centerX - node.x) * 0.001;
           node.vy += (centerY - node.y) * 0.001;
-        }
-
-        for (const node of nodes) {
           node.vx *= DAMPING;
           node.vy *= DAMPING;
           node.x += node.vx;
@@ -118,7 +132,7 @@ export default function GraphPage() {
       }
 
       layoutRef.current = {
-        nodes: nodes.map(({ id, label, x, y }) => ({ id, label, x, y })),
+        nodes: nodes.map(({ id, label, x, y, edgeCount, maxEdges }) => ({ id, label, x, y, edgeCount, maxEdges: maxEdges as number })),
         nodeMap,
       };
     }
@@ -126,17 +140,17 @@ export default function GraphPage() {
     const { nodes, nodeMap } = layoutRef.current;
     const view = viewRef.current;
 
-    // Draw function
     const draw = () => {
       ctx!.clearRect(0, 0, W, H);
       ctx!.save();
       ctx!.translate(view.offsetX, view.offsetY);
       ctx!.scale(view.scale, view.scale);
 
-      // Draw edges
-      const borderColor = getComputedStyle(document.documentElement).getPropertyValue("--border").trim() || "#555";
-      ctx!.strokeStyle = borderColor;
-      ctx!.lineWidth = 1;
+      // Edge color from theme
+      const edgeColor = cssVar("--border");
+      ctx!.strokeStyle = edgeColor;
+      ctx!.lineWidth = Math.max(0.8, 0.8 / view.scale);
+
       for (const edge of graph!.edges) {
         const source = nodeMap.get(edge.source);
         const target = nodeMap.get(edge.target);
@@ -147,64 +161,52 @@ export default function GraphPage() {
         ctx!.stroke();
       }
 
-      // Compute edge count per node for hierarchy
-      const edgeCount = new Map<string, number>();
-      for (const node of nodes) edgeCount.set(node.id, 0);
-      for (const edge of graph!.edges) {
-        edgeCount.set(edge.source, (edgeCount.get(edge.source) || 0) + 1);
-        edgeCount.set(edge.target, (edgeCount.get(edge.target) || 0) + 1);
-      }
-      const maxEdges = Math.max(...Array.from(edgeCount.values()), 1);
+      // Node: size/color by edge count
+      const textColor = cssVar("--text-primary");
+      const maxE = Math.max(...nodes.map((n) => n.edgeCount), 1);
 
-      // Draw nodes with hierarchy (size + color based on connectivity)
-      const baseRadius = Math.max(5, 5 / view.scale);
-      const baseFont = Math.max(11, 11 / view.scale);
       for (const node of nodes) {
-        const count = edgeCount.get(node.id) || 0;
-        const ratio = count / maxEdges;
-        // Size: base (no links) → 3x (most linked)
-        const r = baseRadius * (0.8 + ratio * 2.2);
-        // Color: few links → warm, many links → bright accent
-        const hue = 190 - ratio * 30; // blue → cyan
-        const sat = 60 + ratio * 30;
-        const lit = 50 + ratio * 20;
+        const ratio = node.edgeCount / maxE;
+        const r = Math.max(5, 4 + ratio * 12) / Math.max(1, view.scale * 0.7);
+        const hue = 205 - ratio * 35;
+        const lit = 42 + ratio * 18;
+        const isDark = document.documentElement.getAttribute("data-theme") !== "light";
+
         ctx!.beginPath();
         ctx!.arc(node.x, node.y, r, 0, Math.PI * 2);
-        ctx!.fillStyle = `hsl(${hue}, ${sat}%, ${lit}%)`;
+
+        if (isDark) {
+          ctx!.fillStyle = `hsl(${hue}, 70%, ${lit}%)`;
+          ctx!.strokeStyle = `hsl(${hue}, 60%, ${Math.min(lit + 15, 85)}%)`;
+        } else {
+          ctx!.fillStyle = `hsl(${hue}, 55%, ${Math.max(lit - 10, 30)}%)`;
+          ctx!.strokeStyle = `hsl(${hue}, 50%, ${Math.max(lit - 20, 20)}%)`;
+        }
+        ctx!.lineWidth = Math.max(1, 1.5 / view.scale);
         ctx!.fill();
-        ctx!.strokeStyle = `hsl(${hue}, 70%, 35%)`;
-        ctx!.lineWidth = Math.max(1, 1.5 * (0.5 + ratio));
         ctx!.stroke();
 
         // Label
-        const labelSize = Math.max(baseFont, baseFont * (0.7 + ratio * 0.6));
-        // Resolve current theme text color (canvas doesn't support CSS vars)
-        const textColor = getComputedStyle(document.documentElement).getPropertyValue("--text-primary").trim() || "#e0e0e0";
+        const labelSize = Math.max(11, 10 + ratio * 4) / Math.max(1, view.scale * 0.7);
         ctx!.fillStyle = textColor;
         ctx!.font = `${labelSize}px sans-serif`;
         ctx!.textAlign = "center";
-        ctx!.fillText(node.label, node.x, node.y + r + labelSize + 2);
+        ctx!.fillText(node.label, node.x, node.y + r + labelSize + 3);
       }
 
       ctx!.restore();
     };
+
     draw();
 
-    // ─── Mouse Interactions ──────────────────────────────────────
-
-    // Hit-test: find node at given screen coordinates
+    // Hit-test
     const hitTest = (sx: number, sy: number) => {
-      // Convert screen → graph coordinates
       const gx = (sx - view.offsetX) / view.scale;
       const gy = (sy - view.offsetY) / view.scale;
-      const hitRadius = Math.max(10, 10 / view.scale);
-
       for (const node of nodes) {
         const dx = gx - node.x;
         const dy = gy - node.y;
-        if (dx * dx + dy * dy < hitRadius * hitRadius) {
-          return node;
-        }
+        if (dx * dx + dy * dy < 400 / (view.scale * view.scale)) return node;
       }
       return null;
     };
@@ -214,43 +216,31 @@ export default function GraphPage() {
       e.preventDefault();
       const delta = e.deltaY > 0 ? 0.9 : 1.1;
       const newScale = Math.max(0.2, Math.min(5, view.scale * delta));
-
-      // Zoom towards mouse position
       const mx = e.offsetX;
       const my = e.offsetY;
       view.offsetX = mx - (mx - view.offsetX) * (newScale / view.scale);
       view.offsetY = my - (my - view.offsetY) * (newScale / view.scale);
       view.scale = newScale;
-
       draw();
     };
 
-    // Drag to pan
+    // Mouse events
     const handleMouseDown = (e: MouseEvent) => {
       dragStartRef.current = { x: e.offsetX, y: e.offsetY };
       dragStartViewRef.current = { x: view.offsetX, y: view.offsetY };
-
-      // Only drag on background (not on a node)
       const hit = hitTest(e.offsetX, e.offsetY);
-      if (hit) {
-        // Click on node — will be handled by handleClick
-        return;
-      }
+      if (hit) return;
       draggingRef.current = true;
       canvas.style.cursor = "grabbing";
     };
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!draggingRef.current) {
-        // Update cursor on hover
-        const hit = hitTest(e.offsetX, e.offsetY);
-        canvas.style.cursor = hit ? "pointer" : "grab";
+        canvas.style.cursor = hitTest(e.offsetX, e.offsetY) ? "pointer" : "grab";
         return;
       }
-      const dx = e.offsetX - dragStartRef.current.x;
-      const dy = e.offsetY - dragStartRef.current.y;
-      view.offsetX = dragStartViewRef.current.x + dx;
-      view.offsetY = dragStartViewRef.current.y + dy;
+      view.offsetX = dragStartViewRef.current.x + (e.offsetX - dragStartRef.current.x);
+      view.offsetY = dragStartViewRef.current.y + (e.offsetY - dragStartRef.current.y);
       draw();
     };
 
@@ -259,26 +249,25 @@ export default function GraphPage() {
       canvas.style.cursor = "grab";
     };
 
-    // Click to navigate
     const handleClick = (e: MouseEvent) => {
-      // Ignore if user was dragging
-      if (
-        Math.abs(e.offsetX - dragStartRef.current.x) > 5 ||
-        Math.abs(e.offsetY - dragStartRef.current.y) > 5
-      ) {
-        return;
-      }
+      if (Math.abs(e.offsetX - dragStartRef.current.x) > 5 || Math.abs(e.offsetY - dragStartRef.current.y) > 5) return;
       const hit = hitTest(e.offsetX, e.offsetY);
-      if (hit) {
-        navigate(`/page/${hit.id}`);
-      }
+      if (hit) navigate(`/page/${hit.id}`);
     };
 
-    // Double-click to reset view
-    const handleDoubleClick = () => {
+    const handleDblClick = () => {
       view.offsetX = 0;
       view.offsetY = 0;
       view.scale = 1;
+      draw();
+    };
+
+    // Resize handler
+    const handleResize = () => {
+      const sized = resizeCanvas();
+      W = sized.W;
+      H = sized.H;
+      layoutRef.current = null;
       draw();
     };
 
@@ -288,7 +277,8 @@ export default function GraphPage() {
     canvas.addEventListener("mouseup", handleMouseUp);
     canvas.addEventListener("mouseleave", handleMouseUp);
     canvas.addEventListener("click", handleClick);
-    canvas.addEventListener("dblclick", handleDoubleClick);
+    canvas.addEventListener("dblclick", handleDblClick);
+    window.addEventListener("resize", handleResize);
 
     return () => {
       canvas.removeEventListener("wheel", handleWheel);
@@ -297,7 +287,8 @@ export default function GraphPage() {
       canvas.removeEventListener("mouseup", handleMouseUp);
       canvas.removeEventListener("mouseleave", handleMouseUp);
       canvas.removeEventListener("click", handleClick);
-      canvas.removeEventListener("dblclick", handleDoubleClick);
+      canvas.removeEventListener("dblclick", handleDblClick);
+      window.removeEventListener("resize", handleResize);
     };
   }, [graph, navigate]);
 
@@ -313,13 +304,13 @@ export default function GraphPage() {
 
   return (
     <div className="graph-page">
-      <h1>🕸️ 知识图谱</h1>
-      <p className="graph-page__info">
-        {graph.nodes.length} 个节点 · {graph.edges.length} 条连接
-      </p>
-      <p className="graph-page__hint">
-        滚轮缩放 · 拖拽平移 · 双击重置 · 点击节点跳转
-      </p>
+      <div className="graph-page__header">
+        <h1>🕸️ 知识图谱</h1>
+        <p className="graph-page__info">
+          {graph.nodes.length} 个节点 · {graph.edges.length} 条连接
+          <span className="graph-page__hint">滚轮缩放 · 拖拽平移 · 双击重置 · 点击节点跳转</span>
+        </p>
+      </div>
       <canvas ref={canvasRef} className="graph-canvas" />
     </div>
   );

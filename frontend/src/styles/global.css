@@ -858,8 +858,19 @@ a:hover {
 /* ─── Graph Page ──────────────────────────────────────────────────── */
 
 .graph-page {
-  max-width: 1000px;
-  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+
+.graph-page__header {
+  flex-shrink: 0;
+  margin-bottom: 12px;
+}
+
+.graph-page__header h1 {
+  margin-bottom: 2px;
 }
 .graph-page h1 {
   margin-bottom: 4px;
@@ -867,23 +878,22 @@ a:hover {
 
 .graph-page__info {
   color: var(--text-secondary);
-  margin-bottom: 4px;
   font-size: 14px;
 }
 
 .graph-page__hint {
-  color: var(--text-secondary);
-  margin-bottom: 16px;
+  margin-left: 12px;
   font-size: 12px;
-  opacity: 0.7;
+  opacity: 0.6;
 }
 
 .graph-canvas {
+  flex: 1;
   width: 100%;
-  min-height: 70vh;
-  height: calc(100vh - 280px);
+  min-height: 0;
   cursor: pointer;
   display: block;
+  border-radius: 8px;
 }
 
 /* ─── Search Page ─────────────────────────────────────────────────── */
