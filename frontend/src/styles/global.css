@@ -275,6 +275,7 @@ a:hover {
 
 .home {
   max-width: 800px;
+  margin: 0 auto;
 }
 .home h1 {
   font-size: 28px;
@@ -367,6 +368,67 @@ a:hover {
 
 /* ─── Wiki Page ────────────────────────────────────────────────────── */
 
+/* ─── Wiki Page Layout (content + TOC) ────────────────────────────── */
+.wiki-page-layout {
+  display: flex;
+  gap: 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.wiki-page {
+  flex: 1;
+  min-width: 0;
+  max-width: 800px;
+}
+
+.wiki-page-toc {
+  width: 220px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 32px;
+  align-self: start;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+  padding-left: 16px;
+  border-left: 1px solid var(--border);
+}
+
+.toc-title {
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+}
+
+.toc-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.toc-link {
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding: 3px 0;
+  text-decoration: none;
+  line-height: 1.4;
+  transition: color 0.15s;
+}
+.toc-link:hover {
+  color: var(--accent);
+  text-decoration: none;
+}
+.toc-link--h2 {
+  padding-left: 12px;
+}
+.toc-link--h3 {
+  padding-left: 24px;
+  font-size: 12px;
+}
+
+/* 无 TOC 时回退到旧布局 */
 .wiki-page__header h1 {
   font-size: 26px;
   margin-bottom: 20px;
@@ -464,6 +526,7 @@ a:hover {
 
 .sources {
   max-width: 900px;
+  margin: 0 auto;
 }
 .sources h1 {
   margin-bottom: 4px;
@@ -664,6 +727,7 @@ a:hover {
 
 .ask-page {
   max-width: 800px;
+  margin: 0 auto;
 }
 .ask-page h1 {
   margin-bottom: 4px;
@@ -795,6 +859,7 @@ a:hover {
 
 .graph-page {
   max-width: 1000px;
+  margin: 0 auto;
 }
 .graph-page h1 {
   margin-bottom: 4px;
@@ -826,6 +891,7 @@ a:hover {
 
 .search-page {
   max-width: 800px;
+  margin: 0 auto;
 }
 .search-page h1 {
   margin-bottom: 16px;
