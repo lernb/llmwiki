@@ -4,7 +4,6 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  transition: background-color 0.3s, border-color 0.3s, color 0.3s;
 }
 
 :root {
@@ -13,6 +12,10 @@
 }
 
 /* ─── 主题：通过 data-theme 属性切换 ──────────────────────────────── */
+html {
+  transition: background-color 0.3s, color 0.3s;
+}
+
 [data-theme="dark"],
 :root {
   --bg-primary: #1a1a2e;
@@ -138,9 +141,11 @@ a:hover {
 
 .sidebar__link {
   padding: 8px 16px;
+  margin: 0 8px;
+  border-radius: 6px;
   color: var(--text-secondary);
   font-size: 14px;
-  transition: background 0.15s;
+  transition: background 0.12s, color 0.12s;
 }
 .sidebar__link:hover {
   background: var(--bg-hover);
@@ -210,14 +215,16 @@ a:hover {
 }
 
 .sidebar__page-link {
-  padding: 8px 16px 8px 24px;
+  padding: 10px 16px 10px 24px;
+  margin: 0 8px;
+  border-radius: 6px;
   font-size: 13px;
   color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  transition: background 0.15s;
   line-height: 1.4;
+  transition: background 0.12s, color 0.12s;
 }
 .sidebar__page-link:hover {
   background: var(--bg-hover);
@@ -609,10 +616,7 @@ a:hover {
   cursor: pointer;
   font-weight: 600;
   font-size: 14px;
-}
-
-[data-theme="light"] .btn-primary {
-  color: #fff;
+  transition: background 0.12s;
 }
 .btn-primary:disabled {
   opacity: 0.5;
