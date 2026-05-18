@@ -210,13 +210,14 @@ a:hover {
 }
 
 .sidebar__page-link {
-  padding: 6px 16px 6px 24px;
+  padding: 8px 16px 8px 24px;
   font-size: 13px;
   color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   transition: background 0.15s;
+  line-height: 1.4;
 }
 .sidebar__page-link:hover {
   background: var(--bg-hover);
@@ -551,7 +552,7 @@ a:hover {
   gap: 8px;
   padding: 12px 24px;
   background: var(--accent);
-  color: #000;
+  color: #fff;
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -845,7 +846,7 @@ a:hover {
 .ask-page__input button {
   padding: 10px 24px;
   background: var(--accent);
-  color: #000;
+  color: #fff;
   border: none;
   border-radius: 8px;
   cursor: pointer;
