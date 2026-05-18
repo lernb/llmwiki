@@ -209,12 +209,10 @@ a:hover {
 }
 
 .sidebar__pages {
-  display: flex;
-  flex-direction: column;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding-bottom: 8px;
+  height: 0;
 }
 
 .sidebar__page-link {
