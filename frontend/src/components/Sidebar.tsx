@@ -31,6 +31,23 @@ export default function Sidebar({ open, onToggle }: Props) {
 
   const [status, setStatus] = useState<"online" | "offline">("online");
 
+  // Theme toggle
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem("llmwiki-theme") || "dark";
+  });
+
+  const toggleTheme = () => {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    localStorage.setItem("llmwiki-theme", next);
+    document.documentElement.setAttribute("data-theme", next);
+  };
+
+  // Apply theme on mount
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+  }, []);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (search.trim()) {
@@ -65,6 +82,9 @@ export default function Sidebar({ open, onToggle }: Props) {
 
       <div className="sidebar__divider">页面</div>
       <div className="sidebar__footer">
+        <button className="theme-toggle" onClick={toggleTheme} title={theme === "dark" ? "切换到浅色" : "切换到深色"}>
+          {theme === "dark" ? "☀️" : "🌙"}
+        </button>
         <span className={`status-dot status-dot--${status}`}></span>
         <span className="status-text">{status === "online" ? "已连接" : "未连接"}</span>
       </div>

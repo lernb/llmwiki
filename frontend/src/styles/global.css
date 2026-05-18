@@ -7,6 +7,12 @@
 }
 
 :root {
+  --sidebar-width: 260px;
+  --header-height: 0px;
+}
+
+/* ─── 深色主题（默认） ──────────────────────────────────────────── */
+[data-theme="dark"] {
   --bg-primary: #1a1a2e;
   --bg-secondary: #16213e;
   --bg-card: #1e2a45;
@@ -17,8 +23,35 @@
   --accent-hover: #29b6f6;
   --danger: #ef5350;
   --border: #2a3a5c;
-  --sidebar-width: 260px;
-  --header-height: 0px;
+}
+
+/* ─── 浅色主题 ──────────────────────────────────────────────────── */
+[data-theme="light"] {
+  --bg-primary: #f5f5f5;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-hover: #e8f4fd;
+  --text-primary: #1a1a2e;
+  --text-secondary: #6b7280;
+  --accent: #0288d1;
+  --accent-hover: #0277bd;
+  --danger: #d32f2f;
+  --border: #e0e0e0;
+}
+
+/* ─── 默认（无 data-theme 时走深色） ────────────────────────────── */
+:root,
+[data-theme="dark"] {
+  --bg-primary: #1a1a2e;
+  --bg-secondary: #16213e;
+  --bg-card: #1e2a45;
+  --bg-hover: #263a5e;
+  --text-primary: #e0e0e0;
+  --text-secondary: #a0a0b0;
+  --accent: #4fc3f7;
+  --accent-hover: #29b6f6;
+  --danger: #ef5350;
+  --border: #2a3a5c;
 }
 
 html, body {
@@ -28,6 +61,7 @@ html, body {
   color: var(--text-primary);
   font-size: 15px;
   line-height: 1.6;
+  transition: background 0.3s, color 0.3s;
 }
 
 a {
@@ -140,6 +174,20 @@ a:hover {
   gap: 8px;
   border-top: 1px solid var(--border);
   margin-top: auto;
+}
+
+.theme-toggle {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  transition: background 0.15s;
+}
+.theme-toggle:hover {
+  background: var(--bg-hover);
 }
 
 .status-dot {
