@@ -132,24 +132,22 @@ export default function GraphPage() {
       ctx!.scale(view.scale, view.scale);
 
       const isDark = document.documentElement.getAttribute("data-theme") !== "light";
-      const edgeColor = cssVar("--text-secondary");
       const textColor = cssVar("--text-primary");
       const maxE = Math.max(...nodes.map((n) => n.edgeCount), 1);
 
-      // Edges
-      ctx!.lineWidth = Math.max(0.6, 0.6 / view.scale);
+      // Edges — use distinct color per theme
+      const edgeColor = isDark ? "#8899bb" : "#667788";
+      ctx!.lineWidth = Math.max(0.8, 0.8 / view.scale);
       for (const edge of graph!.edges) {
         const s = nodeMap.get(edge.source);
         const t = nodeMap.get(edge.target);
         if (!s || !t) continue;
         ctx!.strokeStyle = edgeColor;
-        ctx!.globalAlpha = 0.35;
         ctx!.beginPath();
         ctx!.moveTo(s.x, s.y);
         ctx!.lineTo(t.x, t.y);
         ctx!.stroke();
       }
-      ctx!.globalAlpha = 1;
 
       // Nodes
       for (const node of nodes) {

@@ -868,8 +868,17 @@ a:hover {
 }
 
 .graph-page__header {
-  flex-shrink: 0;
-  padding: 24px 40px 8px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  padding: 16px 40px 8px;
+  pointer-events: none;
+}
+.graph-page__header h1,
+.graph-page__header p {
+  pointer-events: auto;
 }
 
 .graph-page__header h1 {
