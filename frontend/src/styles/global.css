@@ -412,34 +412,31 @@ a:hover {
   gap: 12px;
   align-items: center;
   margin-bottom: 24px;
-  padding: 16px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
 }
 
-.sources__upload input[type="file"] {
-  flex: 1;
-  color: var(--text-primary);
-}
-
-.sources__upload button {
-  padding: 8px 20px;
+.upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
   background: var(--accent);
   color: #000;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 15px;
+  transition: background 0.15s;
 }
-.sources__upload button:disabled {
+.upload-btn:hover {
+  background: var(--accent-hover);
+}
+.upload-btn:has(input:disabled) {
   opacity: 0.5;
   cursor: not-allowed;
 }
-.sources__upload button:hover:not(:disabled) {
-  background: var(--accent-hover);
-}
+
+
 
 .sources__table {
   width: 100%;

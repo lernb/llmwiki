@@ -106,10 +106,18 @@ export default function Sources() {
       <p className="sources__desc">上传原始文档，LLM 将读取并编译为 Wiki 页面。</p>
 
       <div className="sources__upload">
-        <input ref={fileRef} type="file" accept=".txt,.md,.pdf,.html" multiple />
-        <button onClick={handleUpload} disabled={uploading}>
-          {uploading ? "上传中..." : "上传"}
-        </button>
+        <label className="upload-btn">
+          {uploading ? "上传中..." : "📁 选择文件并上传"}
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".txt,.md,.pdf,.html"
+            multiple
+            onChange={handleUpload}
+            disabled={uploading}
+            style={{ display: "none" }}
+          />
+        </label>
       </div>
 
       {loading ? (
