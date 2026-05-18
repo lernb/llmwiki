@@ -134,7 +134,8 @@ export default function GraphPage() {
       ctx!.scale(view.scale, view.scale);
 
       // Draw edges
-      ctx!.strokeStyle = "#555";
+      const borderColor = getComputedStyle(document.documentElement).getPropertyValue("--border").trim() || "#555";
+      ctx!.strokeStyle = borderColor;
       ctx!.lineWidth = 1;
       for (const edge of graph!.edges) {
         const source = nodeMap.get(edge.source);
@@ -146,23 +147,43 @@ export default function GraphPage() {
         ctx!.stroke();
       }
 
-      // Draw nodes
-      const nodeRadius = Math.max(6, 6 / view.scale);
-      const fontSize = Math.max(11, 11 / view.scale);
+      // Compute edge count per node for hierarchy
+      const edgeCount = new Map<string, number>();
+      for (const node of nodes) edgeCount.set(node.id, 0);
+      for (const edge of graph!.edges) {
+        edgeCount.set(edge.source, (edgeCount.get(edge.source) || 0) + 1);
+        edgeCount.set(edge.target, (edgeCount.get(edge.target) || 0) + 1);
+      }
+      const maxEdges = Math.max(...Array.from(edgeCount.values()), 1);
+
+      // Draw nodes with hierarchy (size + color based on connectivity)
+      const baseRadius = Math.max(5, 5 / view.scale);
+      const baseFont = Math.max(11, 11 / view.scale);
       for (const node of nodes) {
+        const count = edgeCount.get(node.id) || 0;
+        const ratio = count / maxEdges;
+        // Size: base (no links) → 3x (most linked)
+        const r = baseRadius * (0.8 + ratio * 2.2);
+        // Color: few links → warm, many links → bright accent
+        const hue = 190 - ratio * 30; // blue → cyan
+        const sat = 60 + ratio * 30;
+        const lit = 50 + ratio * 20;
         ctx!.beginPath();
-        ctx!.arc(node.x, node.y, nodeRadius, 0, Math.PI * 2);
-        ctx!.fillStyle = "#4fc3f7";
+        ctx!.arc(node.x, node.y, r, 0, Math.PI * 2);
+        ctx!.fillStyle = `hsl(${hue}, ${sat}%, ${lit}%)`;
         ctx!.fill();
-        ctx!.strokeStyle = "#0288d1";
-        ctx!.lineWidth = 1.5;
+        ctx!.strokeStyle = `hsl(${hue}, 70%, 35%)`;
+        ctx!.lineWidth = Math.max(1, 1.5 * (0.5 + ratio));
         ctx!.stroke();
 
         // Label
-        ctx!.fillStyle = "#e0e0e0";
-        ctx!.font = `${fontSize}px sans-serif`;
+        const labelSize = Math.max(baseFont, baseFont * (0.7 + ratio * 0.6));
+        // Resolve current theme text color (canvas doesn't support CSS vars)
+        const textColor = getComputedStyle(document.documentElement).getPropertyValue("--text-primary").trim() || "#e0e0e0";
+        ctx!.fillStyle = textColor;
+        ctx!.font = `${labelSize}px sans-serif`;
         ctx!.textAlign = "center";
-        ctx!.fillText(node.label, node.x, node.y + nodeRadius + fontSize + 2);
+        ctx!.fillText(node.label, node.x, node.y + r + labelSize + 2);
       }
 
       ctx!.restore();
