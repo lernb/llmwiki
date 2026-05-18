@@ -26,6 +26,8 @@ html {
   --text-secondary: #a0a0b0;
   --accent: #4fc3f7;
   --accent-hover: #29b6f6;
+  --btn-bg: #2979a0;
+  --btn-hover: #2080b0;
   --danger: #ef5350;
   --border: #2a3a5c;
 }
@@ -39,6 +41,8 @@ html {
   --text-secondary: #4b5563;
   --accent: #0277bd;
   --accent-hover: #01579b;
+  --btn-bg: #0277bd;
+  --btn-hover: #01579b;
   --danger: #c62828;
   --border: #d4d4d4;
 }
@@ -141,8 +145,7 @@ a:hover {
 
 .sidebar__link {
   padding: 8px 16px;
-  margin: 0 8px;
-  border-radius: 6px;
+  border-radius: 4px;
   color: var(--text-secondary);
   font-size: 14px;
   transition: background 0.12s, color 0.12s;
@@ -215,9 +218,8 @@ a:hover {
 }
 
 .sidebar__page-link {
-  padding: 10px 16px 10px 24px;
-  margin: 0 8px;
-  border-radius: 6px;
+  padding: 6px 16px 6px 24px;
+  border-radius: 4px;
   font-size: 13px;
   color: var(--text-secondary);
   white-space: nowrap;
@@ -558,7 +560,7 @@ a:hover {
   align-items: center;
   gap: 8px;
   padding: 12px 24px;
-  background: var(--accent);
+  background: var(--btn-bg);
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -568,7 +570,7 @@ a:hover {
   transition: background 0.15s;
 }
 .upload-btn:hover {
-  background: var(--accent-hover);
+  background: var(--btn-hover);
 }
 .upload-btn:has(input:disabled) {
   opacity: 0.5;
@@ -609,7 +611,7 @@ a:hover {
 
 .btn-primary {
   padding: 8px 20px;
-  background: var(--accent);
+  background: var(--btn-bg);
   color: #fff;
   border: none;
   border-radius: 6px;
@@ -623,7 +625,7 @@ a:hover {
   cursor: not-allowed;
 }
 .btn-primary:hover:not(:disabled) {
-  background: var(--accent-hover);
+  background: var(--btn-hover);
 }
 
 .btn-sm {
@@ -849,7 +851,7 @@ a:hover {
 
 .ask-page__input button {
   padding: 10px 24px;
-  background: var(--accent);
+  background: var(--btn-bg);
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -862,7 +864,7 @@ a:hover {
   cursor: not-allowed;
 }
 .ask-page__input button:hover:not(:disabled) {
-  background: var(--accent-hover);
+  background: var(--btn-hover);
 }
 
 /* ─── Graph Page ──────────────────────────────────────────────────── */
@@ -883,10 +885,6 @@ a:hover {
 .graph-page__header h1 {
   margin-bottom: 2px;
 }
-.graph-page h1 {
-  margin-bottom: 4px;
-}
-
 .graph-page__info {
   color: var(--text-secondary);
   font-size: 14px;
