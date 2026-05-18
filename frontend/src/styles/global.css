@@ -210,15 +210,17 @@ a:hover {
 
 .sidebar__pages {
   flex: 1;
-  min-height: 0;
   overflow-y: auto;
-  height: 0;
 }
 
 .sidebar__page-link {
+  display: block;
   padding: 8px 16px;
   font-size: 13px;
   color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
