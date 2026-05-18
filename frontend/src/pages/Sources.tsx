@@ -23,7 +23,12 @@ export default function Sources() {
   const fetchSources = () => {
     setLoading(true);
     getSources()
-      .then((data) => setSources(data as unknown as SourceItem[]))
+      .then((data) => {
+        const items = data as unknown as SourceItem[];
+        // Newest first
+        items.sort((a, b) => b.updated - a.updated);
+        setSources(items);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   };
@@ -55,8 +60,10 @@ export default function Sources() {
     }
   };
 
-  const notifyPagesUpdated = () => {
-    window.dispatchEvent(new Event("pages-updated"));
+  const notifyPagesUpdated = (createdSlugs: string[] = []) => {
+    window.dispatchEvent(
+      new CustomEvent("pages-updated", { detail: { created: createdSlugs } })
+    );
   };
 
   const handleIngest = async (filename: string, isReingest: boolean) => {
@@ -67,7 +74,7 @@ export default function Sources() {
       const result = await ingestSource(filename);
       setLog((prev) => [result, ...prev]);
       fetchSources();
-      notifyPagesUpdated();
+      notifyPagesUpdated(result.pagesCreated);
     } catch (e: any) {
       alert("消化失败: " + e.message);
     } finally {
@@ -86,7 +93,8 @@ export default function Sources() {
       const res = await ingestAllSources();
       setLog((prev) => [...res.results, ...prev]);
       fetchSources();
-      notifyPagesUpdated();
+      const allCreated = res.results.flatMap((r) => r.pagesCreated);
+      notifyPagesUpdated(allCreated);
     } catch (e: any) {
       alert("批量消化失败: " + e.message);
     } finally {

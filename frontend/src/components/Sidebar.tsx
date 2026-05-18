@@ -17,11 +17,21 @@ export default function Sidebar({ open, onToggle }: Props) {
     getPages().then(setPages).catch(console.error);
   };
 
+  const [newSlugs, setNewSlugs] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     fetchPages();
-    // Listen for page updates after ingestion
-    window.addEventListener("pages-updated", fetchPages);
-    return () => window.removeEventListener("pages-updated", fetchPages);
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.created?.length > 0) {
+        setNewSlugs(new Set(detail.created));
+        // Clear highlight after 8 seconds
+        setTimeout(() => setNewSlugs(new Set()), 8000);
+      }
+      fetchPages();
+    };
+    window.addEventListener("pages-updated", handler);
+    return () => window.removeEventListener("pages-updated", handler);
   }, []);
 
   // Poll health status
@@ -93,7 +103,7 @@ export default function Sidebar({ open, onToggle }: Props) {
           <Link
             key={p.slug}
             to={`/page/${p.slug}`}
-            className="sidebar__page-link"
+            className={`sidebar__page-link${newSlugs.has(p.slug) ? " sidebar__page-link--new" : ""}`}
           >
             {p.title}
           </Link>
