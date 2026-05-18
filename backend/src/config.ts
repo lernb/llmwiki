@@ -37,15 +37,22 @@ mkdirSync(SOURCES_DIR, { recursive: true });
 // agents.md path
 export const AGENTS_FILE = resolve(ROOT_DIR, "agents.md");
 
-// DeepSeek API (OpenAI-compatible)
-// Priority: environment variable → Windows Credential Manager → .env file
-export const DEEPSEEK_API_KEY = resolveSecret(
-  "DEEPSEEK_API_KEY",
-  "reasonix/llmwiki/deepseek-api-key",
-  dotenvValues["DEEPSEEK_API_KEY"]
+// ─── LLM Provider ─────────────────────────────────────────────────
+// Provider: deepseek (default) | openai | local
+export const LLM_PROVIDER = process.env.LLM_PROVIDER || dotenvValues["LLM_PROVIDER"] || "deepseek";
+
+// API Key (required for deepseek/openai, optional for local)
+export const LLM_API_KEY = resolveSecret(
+  LLM_PROVIDER === "deepseek" ? "DEEPSEEK_API_KEY" : "LLM_API_KEY",
+  "reasonix/llmwiki/llm-api-key",
+  dotenvValues["DEEPSEEK_API_KEY"] || dotenvValues["LLM_API_KEY"] || ""
 );
-export const DEEPSEEK_BASE_URL = process.env.DEEPSEEK_BASE_URL || dotenvValues["DEEPSEEK_BASE_URL"] || "https://api.deepseek.com/v1";
-export const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || dotenvValues["DEEPSEEK_MODEL"] || "deepseek-v4-flash";
+
+// Base URL (auto-defaults per provider if not set)
+export const LLM_BASE_URL = process.env.LLM_BASE_URL || dotenvValues["LLM_BASE_URL"] || "";
+
+// Model name (auto-defaults per provider if not set)
+export const LLM_MODEL = process.env.LLM_MODEL || dotenvValues["LLM_MODEL"] || "";
 
 // Server
 export const HOST = process.env.HOST || "127.0.0.1";

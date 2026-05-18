@@ -1,29 +1,47 @@
 /**
- * LLM client — DeepSeek API (OpenAI-compatible).
+ * LLM client — supports multiple providers:
+ *   - deepseek     : DeepSeek API (default)
+ *   - openai       : OpenAI API
+ *   - local        : Any OpenAI-compatible endpoint (llama.cpp, Ollama, LM Studio, etc.)
  *
- * Only needs DEEPSEEK_API_KEY set in environment.
+ * Configure via environment / .env:
+ *   LLM_PROVIDER=deepseek|openai|local
+ *   LLM_API_KEY=sk-xxx              (not needed for local models)
+ *   LLM_BASE_URL=...                (defaults per provider)
+ *   LLM_MODEL=...                   (defaults per provider)
  */
 
 import OpenAI from "openai";
-import { DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL } from "../config.js";
+import { LLM_PROVIDER, LLM_API_KEY, LLM_BASE_URL, LLM_MODEL } from "../config.js";
+
+// ─── Provider presets ────────────────────────────────────────────────
+
+const PRESETS: Record<string, { baseURL: string; model: string }> = {
+  deepseek: {
+    baseURL: "https://api.deepseek.com/v1",
+    model: "deepseek-v4-flash",
+  },
+  openai: {
+    baseURL: "https://api.openai.com/v1",
+    model: "gpt-4o-mini",
+  },
+  local: {
+    baseURL: "http://127.0.0.1:8080/v1",
+    model: "local-model",
+  },
+};
+
+// ─── Client ─────────────────────────────────────────────────────────
 
 let client: OpenAI | null = null;
 
 function getClient(): OpenAI {
   if (!client) {
-    if (!DEEPSEEK_API_KEY) {
-      throw new Error(
-        "DEEPSEEK_API_KEY 未设置。请通过以下任一方式配置：\n" +
-        "  方式 A: 系统环境变量 — 运行 setx DEEPSEEK_API_KEY \"sk-xxx\"\n" +
-        "  方式 B: Windows Credential Manager — 添加凭据 reasonix/llmwiki/deepseek-api-key\n" +
-        "  方式 C: .env 文件 — 复制 .env.example 为 .env 填入 Key\n" +
-        "获取 Key: https://platform.deepseek.com/api_keys"
-      );
-    }
-    client = new OpenAI({
-      apiKey: DEEPSEEK_API_KEY,
-      baseURL: DEEPSEEK_BASE_URL,
-    });
+    const preset = PRESETS[LLM_PROVIDER] || PRESETS.deepseek;
+    const baseURL = LLM_BASE_URL || preset.baseURL;
+    const apiKey = LLM_API_KEY || "sk-no-key-required";
+
+    client = new OpenAI({ apiKey, baseURL });
   }
   return client;
 }
@@ -44,7 +62,8 @@ export async function chat(
   options: ChatOptions = {}
 ): Promise<string> {
   const c = getClient();
-  const model = options.model || DEEPSEEK_MODEL;
+  const preset = PRESETS[LLM_PROVIDER] || PRESETS.deepseek;
+  const model = options.model || LLM_MODEL || preset.model;
 
   const allMessages = options.system
     ? [{ role: "system" as const, content: options.system }, ...messages]
@@ -71,8 +90,10 @@ export async function checkConnection(): Promise<{ ok: boolean; message: string 
   try {
     const c = getClient();
     await c.models.list();
-    return { ok: true, message: "Connected to DeepSeek API" };
+    const preset = PRESETS[LLM_PROVIDER] || PRESETS.deepseek;
+    const model = LLM_MODEL || preset.model;
+    return { ok: true, message: `已连接 ${LLM_PROVIDER} / ${model}` };
   } catch (e: any) {
-    return { ok: false, message: e.message || "Connection failed" };
+    return { ok: false, message: e.message || "连接失败" };
   }
 }

@@ -1,0 +1,379 @@
+
+
+SELECT AUFNR AS AUFNR,   KDAUF AS KDAUF FROM SAPPRD.AUFK WHERE KDAUF = '2100009940';
+
+select case when (c.GXBH<'9920' and substr(c.arbpl,0,2)<>'WX') then c.groupname
+                                                    when c.GXBH<'9920' and substr(c.arbpl,0,2)='WX' then c.scbm
+                                                    else c.GXMS end as ZL,
+                                               (select  max(DEPARTMENT) from sapprd.ZAB_MATINFO za where za.matnr=c.matnr ) DEPARTMENT,
+                                      c.* from (
+                                        select j.vornr GXBH,
+                                            case when (j.vornr<'9920' and substr(j.ARBPL,0,2)<>'WX') then (SELECT CJNAME FROM V_FACTORY_NB X WHERE X.AUFNR=j.AUFNR AND GROUPNAME=t.groupname ) 
+                                                when j.vornr<'9920' and substr(j.ARBPL,0,2)='WX' and t.wxgroup='缝制确认' then (SELECT CJNAME FROM V_FACTORY_MIS_WX X WHERE X.AUFNR=j.AUFNR AND x.GROUPNAME='FZ' and x.banfn=j.banfn)
+                                                when j.vornr<'9920' and substr(j.ARBPL,0,2)='WX' and t.wxgroup='拼缝确认' then (SELECT CJNAME FROM V_FACTORY_MIS_WX X WHERE X.AUFNR=j.AUFNR AND x.GROUPNAME='PF' and x.banfn=j.banfn)
+                                                when j.vornr<'9920' and substr(j.ARBPL,0,2)='WX' and t.wxgroup='服饰确认' then (SELECT CJNAME FROM V_FACTORY_MIS_WX X WHERE X.AUFNR=j.AUFNR AND (x.GROUPNAME='FS' or x.GROUPNAME='LZX') and x.banfn=j.banfn)   
+                                                when j.vornr<'9920' and substr(j.ARBPL,0,2)='WX' and t.wxgroup='水洗确认' then (SELECT CJNAME FROM V_FACTORY_MIS_WX X WHERE X.AUFNR=j.AUFNR AND x.GROUPNAME='SX' and x.banfn=j.banfn)   
+                                                when j.vornr<'9920' and substr(j.ARBPL,0,2)='WX' and t.wxgroup='后整确认' then (SELECT CJNAME FROM V_FACTORY_MIS_WX X WHERE X.AUFNR=j.AUFNR AND x.GROUPNAME='HZL' and x.banfn=j.banfn)
+                                                else ''        
+                                             end as GC,
+                                              t.groupname PXXM,
+                                              t.groupname,
+                                              case when substr(j.ARBPL,0,2)='WX' then 
+                                                '外发加工'
+                                              else 
+                                              t.groupname end as SCBM, 
+                                              j.ltxa1 GXMS,
+                                              nvl(h.agvrg,0) AGVRG,
+                                              nvl(h.lmnga,0) LMNGA,
+                                              nvl(h.dyzp,0) DYZP,
+                                              nvl(h.,0) ,
+                                              nvl(h.amnga,0) AMNGA,
+                                              nvl(h.abcy,0) ABCY,
+                                              nvl(h.xzbzt,0) XZBZT,
+                                              nvl(h.cpbcs,0) CPBCS,
+                                              nvl(h.cpbly,0) CPBLY,
+                                              nvl(h.gsjkhy,0) GSJKHY,
+                                              nvl(h.dmnga,0) DMNGA,
+                                              nvl(h.xmnga,0) XMNGA,
+                                              nvl(h.slhj,0) SLHJ,
+                                              nvl(h.kysl,0) KYSL,
+                                              nvl(h.sxdsl,0)+nvl(h.abcy,0) SXDSL,
+                                              '0' DSBFFY,
+                                              h.ZLKKSL,
+                                              '0' KKFY,
+                                              '0' KKZE,
+                                              n.username QRBM,
+                                              h.BZ,
+                                              '' ZDQRBJ,
+                                              n.lastname QRR,
+                                              h.confirmdate QRSJ,
+                                              h.autoflag AUTOFLAG,
+                                              j.AUFNR,
+                                              j.KDAUF,
+                                              j.KDPOS,
+                                              j.MATNR,
+                                              j.ARBPL,
+                                              --(select max(distinct w.CPUDT) BLDAT  from SAPPRD.MSEG v 
+                                               --join SAPPRD.MKPF w  on  w.MBLNR=v.MBLNR and w.MJAHR=v.MJAHR and w.CPUDT<>' '
+                                               --where v.aufnr='010000066445' AND w.mandt=v.mandt and v.matnr<>' ' and v.aufnr<>' ' group by v.aufnr) as KFRQ,
+                                              '' as YQSJ,
+                                              0 as GRADEA,
+                                              0 as GRADEB,
+                                              0 as GRADEC,
+                                             0 as GRADED
+                                           from (select a.AUFNR,f.ARBPL, 
+                                              c.vornr,
+                                              c.ltxa1,
+                                              b.KDAUF,
+                                              b.KDPOS,
+                                              b.MATNR,
+                                              c.banfn
+                                              from SAPPRD.AFKO a,
+                                                 SAPPRD.AFPO b,
+                                                 SAPPRD.AFVC c,
+                                                 SAPPRD.CRHD f,
+                                                 SAPPRD.AUFK ak
+                                              where a.aufpl = c.aufpl 
+                                                and a.mandt=b.mandt
+                                                and a.mandt=c.mandt
+                                                and a.aufnr=b.aufnr
+                                                and a.aufnr=ak.aufnr
+                                                --and substr(a.gstrp,0,8)>'20180930' 
+                                                --and substr(ak.erdat,0,8)>'20180930' 
+                                                and b.matnr not like '0000000000003%' 
+                                                and (b.matnr NOT LIKE 'H%' or b.matnr in (select matnr from SAPPRD.MARA where MTART='ZFRT' and MATNR=b.matnr))
+                                                and c.arbid = f.objid
+                                                and ((select jt.INACT from sapprd.jest jt where c.OBJNR=jt.OBJNR and jt.STAT='I0013')='X' 
+                                                    OR not exists (select jt.INACT from sapprd.jest jt where c.OBJNR=jt.OBJNR and jt.STAT='I0013')) 
+                                                and a.aufnr like '01%'
+                                                and ((f.arbpl in (select arbpl from TGROUP)) or substr(f.arbpl,0,2)='WX')
+                                                and a.aufnr='010000066445') j
+                                              left join  CONFIRMLIST h
+                                              on (h.aufnr=j.aufnr) and h.arbpl=j.arbpl and h.gxbh=j.vornr
+                                              left join TGROUP t
+                                              on t.arbpl=j.arbpl
+                                              left join TUSER n 
+                                              on n.userid=h.confirmuserid
+                                              ) c  union SELECT * FROM (select  '货运部' as ZL,
+                                                '' as DEPARTMENT,
+                                                '9910' as GXBH, 
+                                                '货运部' as GC,
+                                                '货运部' PXXM,
+                                                '货运部' groupname,
+                                                '货运部' as SCBM, 
+                                                '货运部' as GXMS, 
+                                  nvl(h0.agvrg,0) AGVRG,
+                                  nvl(h0.lmnga,0) LMNGA,
+                                  nvl(h0.dyzp,0) DYZP,
+                                  nvl(h0.,0) ,
+                                  nvl(h0.amnga,0) AMNGA,
+                                  nvl(h0.abcy,0) ABCY,
+                                  nvl(h0.xzbzt,0) XZBZT,
+                                  nvl(h0.cpbcs,0) CPBCS,
+                                  nvl(h0.cpbly,0) CPBLY,
+                                  nvl(h0.gsjkhy,0) GSJKHY,
+                                  nvl(h0.dmnga,0) DMNGA,
+                                  nvl(h0.xmnga,0) XMNGA,
+                                  nvl(h0.slhj,0) SLHJ,
+                                  nvl(h0.kysl,0) KYSL,
+                                  nvl(h0.sxdsl,0) SXDSL,
+                                            '0' DSBFFY,
+                                              h0.ZLKKSL,
+                                              '0' KKFY,
+                                              '0' KKZE,
+                                  n0.username QRBM,
+                                  h0.BZ,
+                                  '' ZDQRBJ,
+                                  n0.lastname QRR,
+                                  h0.confirmdate QRSJ,
+                                  h0.autoflag AUTOFLAG,
+                                  j0.AUFNR,
+                                  j0.KDAUF,
+                                  j0.KDPOS,
+                                  j0.MATNR, 
+                                  '0006HYB' as ARBPL,
+                                  '' as YQSJ,
+                                  0 as GRADEA,
+                                  0 as GRADEB,
+                                  0 as GRADEC,
+0 as GRADED
+                               from (select a0.AUFNR,
+                                            b0.KDAUF,
+                                            b0.KDPOS,
+                                            b0.MATNR                 
+                                  from SAPPRD.AFKO a0,
+                                       SAPPRD.AFPO b0,
+                                       SAPPRD.AUFK ak0
+                                  where a0.aufnr='010000066445'
+                                        and a0.mandt=b0.mandt
+                                        and b0.aufnr=a0.aufnr
+                                        and ak0.aufnr=a0.aufnr
+                                        --and substr(a0.gstrp,0,8)>'20180930' 
+                                        --and substr(ak0.erdat,0,8)>'20180930' 
+                                        and a0.aufnr like '01%'
+                                  ) j0
+                                  left join  CONFIRMLIST h0  
+                                  on (h0.aufnr=j0.aufnr) and h0.gxbh='9910' 
+                                  left join TUSER n0
+                                  on n0.userid=h0.confirmuserid ) c0  union SELECT * FROM (select  '产品部' as ZL,
+                                                '' as DEPARTMENT,
+                                                '9920' as GXBH, 
+                                                '产品部' as GC,
+                                                '产品部' PXXM,
+                                                '产品部' groupname,
+                                                '产品部' as SCBM, 
+                                                '产品部' as GXMS, 
+                                  nvl(h1.agvrg,0) AGVRG,
+                                  nvl(h1.lmnga,0) LMNGA,
+                                  nvl(h1.dyzp,0) DYZP,
+                                  nvl(h1.,0) ,
+                                  nvl(h1.amnga,0) AMNGA,
+                                  nvl(h1.abcy,0) ABCY,
+                                  nvl(h1.xzbzt,0) XZBZT,
+                                  nvl(h1.cpbcs,0) CPBCS,
+                                  nvl(h1.cpbly,0) CPBLY,
+                                  nvl(h1.gsjkhy,0) GSJKHY,
+                                  nvl(h1.dmnga,0) DMNGA,
+                                  nvl(h1.xmnga,0) XMNGA,
+                                  nvl(h1.slhj,0) SLHJ,
+                                  nvl(h1.kysl,0) KYSL,
+                                  nvl(h1.sxdsl,0) SXDSL,
+                                            '0' DSBFFY,
+                                              h1.ZLKKSL,
+                                              '0' KKFY,
+                                              '0' KKZE,
+                                  n1.username QRBM,
+                                  h1.BZ,
+                                  '' ZDQRBJ,
+                                  n1.lastname QRR,
+                                  h1.confirmdate QRSJ,
+                                  h1.autoflag AUTOFLAG,
+                                  h1.AUFNR,
+                                  '' KDAUF,
+                                  '' KDPOS,
+                                  '' MATNR, 
+                                  '0007CPB' as ARBPL,
+                                  '' as YQSJ,
+                                  0 as GRADEA,
+                                  0 as GRADEB,
+                                  0 as GRADEC,
+0 as GRADED
+                               from  CONFIRMLIST h1  
+                                    left join TUSER n1
+                                    on n1.userid=h1.confirmuserid
+                                 where h1.aufnr='010000066445' and h1.gxbh='9920'
+                                   ) c1  union SELECT * FROM (select  '行政部' as ZL,
+                                                '' as DEPARTMENT,
+                                                '9930' as GXBH, 
+                                                '行政部' as GC,
+                                                '行政部' PXXM,
+                                                '行政部' groupname,
+                                                '行政部' as SCBM, 
+                                                '行政部' as GXMS, 
+                                  nvl(h2.agvrg,0) AGVRG,
+                                  nvl(h2.lmnga,0) LMNGA,
+                                  nvl(h2.dyzp,0) DYZP,
+                                  nvl(h2.,0) ,
+                                  nvl(h2.amnga,0) AMNGA,
+                                  nvl(h2.abcy,0) ABCY,
+                                  nvl(h2.xzbzt,0) XZBZT,
+                                  nvl(h2.cpbcs,0) CPBCS,
+                                  nvl(h2.cpbly,0) CPBLY,
+                                  nvl(h2.gsjkhy,0) GSJKHY,
+                                  nvl(h2.dmnga,0) DMNGA,
+                                  nvl(h2.xmnga,0) XMNGA,
+                                  nvl(h2.slhj,0) SLHJ,
+                                  nvl(h2.kysl,0) KYSL,
+                                  nvl(h2.sxdsl,0) SXDSL,
+                                            '0' DSBFFY,
+                                              h2.ZLKKSL,
+                                              '0' KKFY,
+                                              '0' KKZE,
+                                  n2.username QRBM,
+                                  h2.BZ,
+                                  '' ZDQRBJ,
+                                  n2.lastname QRR,
+                                  h2.confirmdate QRSJ,
+                                  h2.autoflag AUTOFLAG,
+                                  h2.AUFNR,
+                                  '' KDAUF,
+                                  '' KDPOS,
+                                  '' MATNR, 
+                                  '0008XZB' as ARBPL,
+                                  '' as YQSJ,
+                                  0 as GRADEA,
+                                  0 as GRADEB,
+                                  0 as GRADEC,
+0 as GRADED
+                               from  CONFIRMLIST h2  
+                                    left join TUSER n2
+                                    on n2.userid=h2.confirmuserid
+                                 where h2.aufnr='010000066445' and h2.gxbh='9930'
+                                   ) c2  union SELECT * FROM (select  '品质部' as ZL,
+                                                '' as DEPARTMENT,
+                                                '9940' as GXBH, 
+                                                '品质部' as GC,
+                                                '品质部' PXXM,
+                                                '品质部' groupname,
+                                                '品质部' as SCBM, 
+                                                '品质部' as GXMS, 
+                                  nvl(h3.agvrg,0) AGVRG,
+                                  nvl(h3.lmnga,0) LMNGA,
+                                  nvl(h3.dyzp,0) DYZP,
+                                  nvl(h3.,0) ,
+                                  nvl(h3.amnga,0) AMNGA,
+                                  nvl(h3.abcy,0) ABCY,
+                                  nvl(h3.xzbzt,0) XZBZT,
+                                  nvl(h3.cpbcs,0) CPBCS,
+                                  nvl(h3.cpbly,0) CPBLY,
+                                  nvl(h3.gsjkhy,0) GSJKHY,
+                                  nvl(h3.dmnga,0) DMNGA,
+                                  nvl(h3.xmnga,0) XMNGA,
+                                  nvl(h3.slhj,0) SLHJ,
+                                  nvl(h3.kysl,0) KYSL,
+                                  nvl(h3.sxdsl,0) SXDSL,
+                                            '0' DSBFFY,
+                                              h3.ZLKKSL,
+                                              '0' KKFY,
+                                              '0' KKZE,
+                                  n3.username QRBM,
+                                  h3.BZ,
+                                  '' ZDQRBJ,
+                                  n3.lastname QRR,
+                                  h3.confirmdate QRSJ,
+                                  h3.autoflag AUTOFLAG,
+                                  h3.AUFNR,
+                                  '' KDAUF,
+                                  '' KDPOS,
+                                  '' MATNR, 
+                                  '0009PZB' as ARBPL,
+                                  '' as YQSJ,
+                                  0 as GRADEA,
+                                  0 as GRADEB,
+                                  0 as GRADEC,
+0 as GRADED
+                               from  CONFIRMLIST h3  
+                                    left join TUSER n3
+                                    on n3.userid=h3.confirmuserid
+                                 where h3.aufnr='010000066445' and h3.gxbh='9940'
+                                   ) c3  union SELECT * FROM (select  '采购部' as ZL,
+                                                '' as DEPARTMENT,
+                                                '9990' as GXBH, 
+                                                '采购部' as GC,
+                                                '采购部' PXXM,
+                                                '采购部' groupname,
+                                                '采购部' as SCBM, 
+                                                '采购部' as GXMS, 
+                                  nvl(h4.agvrg,0) AGVRG,
+                                  nvl(h4.lmnga,0) LMNGA,
+                                  nvl(h4.dyzp,0) DYZP,
+                                  nvl(h4.,0) ,
+                                  nvl(h4.amnga,0) AMNGA,
+                                  nvl(h4.abcy,0) ABCY,
+                                  nvl(h4.xzbzt,0) XZBZT,
+                                  nvl(h4.cpbcs,0) CPBCS,
+                                  nvl(h4.cpbly,0) CPBLY,
+                                  nvl(h4.gsjkhy,0) GSJKHY,
+                                  nvl(h4.dmnga,0) DMNGA,
+                                  nvl(h4.xmnga,0) XMNGA,
+                                  nvl(h4.slhj,0) SLHJ,
+                                  nvl(h4.kysl,0) KYSL,
+                                  nvl(h4.sxdsl,0) SXDSL,
+                                            '0' DSBFFY,
+                                              h4.ZLKKSL,
+                                              '0' KKFY,
+                                              '0' KKZE,
+                                  n4.username QRBM,
+                                  h4.BZ,
+                                  '' ZDQRBJ,
+                                  n4.lastname QRR,
+                                  h4.confirmdate QRSJ,
+                                  h4.autoflag AUTOFLAG,
+                                  h4.AUFNR,
+                                  '' KDAUF,
+                                  '' KDPOS,
+                                  '' MATNR, 
+                                  '0007CPB' as ARBPL,
+                                  '' as YQSJ,
+                                  0 as GRADEA,
+                                  0 as GRADEB,
+                                  0 as GRADEC,
+                                  0 as GRADED
+                               from  CONFIRMLIST h4  
+                                    left join TUSER n4
+                                    on n4.userid=h4.confirmuserid
+                                 where h4.aufnr='010000066445' and h4.gxbh='9920' and h4.GC='采购部'
+                                   ) c4 
+																	 
+																	 
+																	 select * from it.CONFIRMANDPRINTLIST where aufnr='010000066755'
+																	 
+																	 delete from it.CONFIRMANDPRINTLIST where aufnr='010000066755'
+																	 
+																	 SELECT * FROM CONFIRMLIST where aufnr='010000066445'
+																	 
+																	 UPDATE CONFIRMLIST set =0 where aufnr='010000066445' AND ARBPL='0007CPB' and =30
+																	 UPDATE CONFIRMLIST set =30 where aufnr='010000066445' AND ARBPL='WXFZ' 
+																		 
+																		  select * from SAPPRD.ZMINBM 
+																	 
+																	 select LIFNR,a.MATNR,b.MAKTX from SAPPRD.ZMINBM a inner join SAPPRD.Makt b on a.matnr=b.matnr where spras='1'
+																	 
+							
+
+
+									 select * from 		VBAP where VbELN='2100010201'			
+									 select * from 		VBAP where matnr='366AE8610540000' and VbELN='2100010201'			 
+									 
+															select * from  MSKA where matnr='366AE8610540000'
+									select * from J_3ABDSI
+											 select * from 		 mseg 
+																 select * from 		AFKO 											
+	 
+									select * from 		PLAF where matnr='366AE8610540000' and PLNUM='2100010201'			 					 
+																	 
+																	 
+																	 
+
+																	 
+																	 
