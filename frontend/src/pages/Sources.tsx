@@ -201,7 +201,7 @@ export default function Sources() {
                       className="btn-primary btn-sm"
                       onClick={() => handleIngest(s.filename, s.ingested)}
                       disabled={ingestingAll}
-                      style={s.ingested ? {} : { minWidth: 78 }}
+                      style={s.ingested ? {} : { letterSpacing: "0.6em" }}
                     >
                       {s.ingested ? "🔄 重新消化" : "🧠 消化"}
                     </button>
@@ -231,6 +231,47 @@ export default function Sources() {
 
   const isIngesting = (filename: string) => ingestingSet.has(filename);
   const anyIngesting = ingestingSet.size > 0 || ingestingAll;
+
+  const pendingFiles = sources.filter((s) => !s.ingested).map((s) => s.filename);
+  const ingestedFiles = sources.filter((s) => s.ingested).map((s) => s.filename);
+
+  const renderRow = (s: SourceItem) => (
+    <tr key={s.filename}>
+      <td>
+        <span className="filename-text">{s.filename}</span>
+        {s.ingested && (
+          <span className="source-badge source-badge--done">已消化</span>
+        )}
+      </td>
+      <td>{formatSize(s.size)}</td>
+      <td className="sources__status-cell">
+        {isIngesting(s.filename) ? (
+          <span className="source-status source-status--ingesting">⏳ 消化中...</span>
+        ) : s.ingested ? (
+          <span>✅ {formatTime(s.lastIngested)}</span>
+        ) : (
+          <span className="source-status source-status--pending">⏳ 待消化</span>
+        )}
+      </td>
+      <td className="sources__actions">
+        {isIngesting(s.filename) ? (
+          <button className="btn-danger btn-sm" onClick={() => handleCancel(s.filename)} disabled={cancelling.has(s.filename)}>
+            停止
+          </button>
+        ) : (
+          <button className="btn-primary btn-sm" onClick={() => handleIngest(s.filename, s.ingested)} disabled={ingestingAll}>
+            {s.ingested ? "🔄 重新消化" : "🧠 消化"}
+          </button>
+        )}
+        <a href={`/api/sources/${encodeURIComponent(s.filename)}/download`} className="btn-download btn-sm" download={s.filename}>
+          下载
+        </a>
+        <button className="btn-danger btn-sm" onClick={() => handleDelete(s.filename)} disabled={isIngesting(s.filename)}>
+          删除
+        </button>
+      </td>
+    </tr>
+  );
 
   const formatSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;
@@ -286,8 +327,48 @@ export default function Sources() {
             </div>
           )}
 
-          {renderTable(sources.filter((s) => !s.ingested), "📤 待消化", pendingFiles)}
-          {renderTable(sources.filter((s) => s.ingested), "✅ 已消化", ingestedFiles)}
+          {/* 单表格，按状态分组 */}
+          <table className="sources__table">
+            <thead>
+              <tr>
+                <th>文件名</th>
+                <th>大小</th>
+                <th>状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {/* 待消化分组标题行 */}
+              {sources.filter((s) => !s.ingested).length > 0 && (
+                <tr className="sources-group-row">
+                  <td colSpan={4}>
+                    <div className="sources-group-label">
+                      <span>📤 待消化（{sources.filter((s) => !s.ingested).length}）</span>
+                      <button className="btn-group" onClick={() => handleIngestAll(pendingFiles)} disabled={anyIngesting}>
+                        全部消化
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              )}
+              {sources.filter((s) => !s.ingested).map((s) => renderRow(s))}
+
+              {/* 已消化分组标题行 */}
+              {sources.filter((s) => s.ingested).length > 0 && (
+                <tr className="sources-group-row">
+                  <td colSpan={4}>
+                    <div className="sources-group-label">
+                      <span>✅ 已消化（{sources.filter((s) => s.ingested).length}）</span>
+                      <button className="btn-group" onClick={() => handleIngestAll(ingestedFiles)} disabled={anyIngesting}>
+                        全部重新消化
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              )}
+              {sources.filter((s) => s.ingested).map((s) => renderRow(s))}
+            </tbody>
+          </table>
 
           {/* Ingestion Log */}
           {log.length > 0 && (
