@@ -573,6 +573,22 @@ a:hover {
   margin-bottom: 20px;
 }
 
+.sources-group {
+  margin-bottom: 24px;
+}
+
+.sources-group__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.sources-group__header h2 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
 .sources__upload {
   display: flex;
   gap: 12px;

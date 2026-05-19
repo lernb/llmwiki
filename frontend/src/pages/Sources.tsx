@@ -117,11 +117,14 @@ export default function Sources() {
     }
   };
 
-  const handleIngestAll = async () => {
-    if (!confirm(`确定要消化全部 ${sources.length} 个源文件吗？这将消耗 API 额度。`)) return;
+  const handleIngestAll = async (files?: string[]) => {
+    const label = files ? `选中的 ${files.length} 个源文件` : `全部 ${sources.length} 个源文件`;
+    if (!confirm(`确定要消化${label}吗？这将消耗 API 额度。`)) return;
     setIngestingAll(true);
     try {
-      const res = await ingestAllSources();
+      const res = files
+        ? { results: await Promise.all(files.map((f) => ingestSource(f))) }
+        : await ingestAllSources();
       setLog((prev) => [...res.results, ...prev]);
       fetchSources();
       const allCreated = res.results.flatMap((r) => r.pagesCreated);
@@ -131,6 +134,96 @@ export default function Sources() {
     } finally {
       setIngestingAll(false);
     }
+  };
+
+  const pendingFiles = sources.filter((s) => !s.ingested).map((s) => s.filename);
+  const ingestedFiles = sources.filter((s) => s.ingested).map((s) => s.filename);
+
+  const renderTable = (items: SourceItem[], title: string, allFilenames: string[]) => {
+    if (items.length === 0) return null;
+    const anyItemIngesting = items.some((s) => ingestingSet.has(s.filename));
+
+    return (
+      <div className="sources-group" key={title}>
+        <div className="sources-group__header">
+          <h2>{title}（{items.length}）</h2>
+          {anyItemIngesting || ingestingAll ? null : (
+            <button
+              className="btn-primary"
+              onClick={() => handleIngestAll(allFilenames)}
+              disabled={anyIngesting}
+            >
+              {allFilenames === pendingFiles ? "🧠 消化全部" : "🔄 重新消化全部"}
+            </button>
+          )}
+        </div>
+        <table className="sources__table">
+          <thead>
+            <tr>
+              <th>文件名</th>
+              <th>大小</th>
+              <th>状态</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((s) => (
+              <tr key={s.filename}>
+                <td>
+                  <span className="filename-text">{s.filename}</span>
+                  {s.ingested && (
+                    <span className="source-badge source-badge--done">已消化</span>
+                  )}
+                </td>
+                <td>{formatSize(s.size)}</td>
+                <td className="sources__status-cell">
+                  {isIngesting(s.filename) ? (
+                    <span className="source-status source-status--ingesting">⏳ 消化中...</span>
+                  ) : s.ingested ? (
+                    <span>✅ {formatTime(s.lastIngested)}</span>
+                  ) : (
+                    <span className="source-status source-status--pending">⏳ 待消化</span>
+                  )}
+                </td>
+                <td className="sources__actions">
+                  {isIngesting(s.filename) ? (
+                    <button
+                      className="btn-danger btn-sm"
+                      onClick={() => handleCancel(s.filename)}
+                      disabled={cancelling.has(s.filename)}
+                    >
+                      停止
+                    </button>
+                  ) : (
+                    <button
+                      className="btn-primary btn-sm"
+                      onClick={() => handleIngest(s.filename, s.ingested)}
+                      disabled={ingestingAll}
+                    >
+                      {s.ingested ? "🔄 重新消化" : "🧠 消化"}
+                    </button>
+                  )}
+                  <a
+                    href={`/api/sources/${encodeURIComponent(s.filename)}/download`}
+                    className="btn-download btn-sm"
+                    download={s.filename}
+                  >
+                    下载
+                  </a>
+                  <button
+                    className="btn-danger btn-sm"
+                    onClick={() => handleDelete(s.filename)}
+                    disabled={isIngesting(s.filename)}
+                  >
+                    删除
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
   };
 
   const isIngesting = (filename: string) => ingestingSet.has(filename);
@@ -179,143 +272,49 @@ export default function Sources() {
         </div>
       ) : (
         <>
-          <div style={{ marginBottom: 12, display: "flex", gap: 8 }}>
-            {ingestingAll ? (
+          {ingestingAll && (
+            <div style={{ marginBottom: 12 }}>
               <button
                 className="btn-ingesting-all"
                 onClick={() => fetch("/api/ingest/cancel-all", { method: "POST" })}
               >
                 ⏹ 停止全部
               </button>
-            ) : (
-              <button
-                className="btn-primary"
-                onClick={handleIngestAll}
-                disabled={anyIngesting}
-              >
-                🧠 消化全部
-              </button>
-            )}
-          </div>
-
-          <table className="sources__table">
-            <thead>
-              <tr>
-                <th>文件名</th>
-                <th>大小</th>
-                <th>状态</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pagedSources.map((s) => (
-                <tr key={s.filename}>
-                  <td>
-                    <span className="filename-text">{s.filename}</span>
-                    {s.ingested && (
-                      <span className="source-badge source-badge--done">已消化</span>
-                    )}
-                  </td>
-                  <td>{formatSize(s.size)}</td>
-                  <td className="sources__status-cell">
-                    {isIngesting(s.filename) ? (
-                      <span className="source-status source-status--ingesting">⏳ 消化中...</span>
-                    ) : s.ingested ? (
-                      <span>✅ {formatTime(s.lastIngested)}</span>
-                    ) : (
-                      <span className="source-status source-status--pending">⏳ 待消化</span>
-                    )}
-                  </td>
-                  <td className="sources__actions">
-                    {isIngesting(s.filename) ? (
-                      <button
-                        className="btn-danger btn-sm"
-                        onClick={() => handleCancel(s.filename)}
-                        disabled={cancelling.has(s.filename)}
-                      >
-                        停止
-                      </button>
-                    ) : (
-                      <button
-                        className="btn-primary btn-sm"
-                        onClick={() => handleIngest(s.filename, s.ingested)}
-                        disabled={ingestingAll}
-                      >
-                        {s.ingested ? "🔄 重新消化" : "🧠 消化"}
-                      </button>
-                    )}
-                    <a
-                      href={`/api/sources/${encodeURIComponent(s.filename)}/download`}
-                      className="btn-download btn-sm"
-                      download={s.filename}
-                    >
-                      下载
-                    </a>
-                    <button
-                      className="btn-danger btn-sm"
-                      onClick={() => handleDelete(s.filename)}
-                      disabled={isIngesting(s.filename)}
-                    >
-                      删除
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {/* Pagination */}
-          {sources.length > 0 && (
-            <div className="pagination">
-              <div className="pagination__info">
-                共 {sources.length} 条，第 {page}/{totalPages} 页
-              </div>
-              <div className="pagination__controls">
-                <button
-                  className="pagination__btn"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                >
-                  上一页
-                </button>
-                {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-                  let pageNum: number;
-                  if (totalPages <= 7) {
-                    pageNum = i + 1;
-                  } else if (page <= 4) {
-                    pageNum = i + 1;
-                  } else if (page >= totalPages - 3) {
-                    pageNum = totalPages - 6 + i;
-                  } else {
-                    pageNum = page - 3 + i;
-                  }
-                  return (
-                    <button
-                      key={pageNum}
-                      className={`pagination__btn${pageNum === page ? " pagination__btn--active" : ""}`}
-                      onClick={() => setPage(pageNum)}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                })}
-                <button
-                  className="pagination__btn"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                >
-                  下一页
-                </button>
-              </div>
-              <div className="pagination__size">
-                <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}>
-                  <option value={10}>10条/页</option>
-                  <option value={20}>20条/页</option>
-                  <option value={50}>50条/页</option>
-                  <option value={100}>100条/页</option>
-                </select>
-              </div>
             </div>
+          )}
+
+          {renderTable(sources.filter((s) => !s.ingested), "📤 待消化", pendingFiles)}
+          {renderTable(sources.filter((s) => s.ingested), "✅ 已消化", ingestedFiles)}
+
+          {/* Ingestion Log */}
+          {log.length > 0 && (
+            <section className="sources__log">
+              <h2>消化日志</h2>
+              {log.map((r, i) => (
+                <div
+                  key={i}
+                  className={`log-entry ${r.status === "success" ? "log-entry--success" : "log-entry--error"}`}
+                >
+                  <div className="log-entry__header">
+                    <strong>{r.sourceFile}</strong>
+                    <span className={`log-status log-status--${r.status}`}>
+                      {r.status === "success" ? "完成" : r.status === "cancelled" ? "已取消" : "失败"}
+                    </span>
+                  </div>
+                  <p className="log-entry__msg">{r.message}</p>
+                  {(r.pagesCreated.length > 0 || r.pagesUpdated.length > 0) && (
+                    <div className="log-entry__pages">
+                      {r.pagesCreated.map((s) => (
+                        <Link key={s} to={`/page/${s}`} className="log-page-link">+ {s}</Link>
+                      ))}
+                      {r.pagesUpdated.map((s) => (
+                        <Link key={s} to={`/page/${s}`} className="log-page-link">~ {s}</Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </section>
           )}
         </>
       )}
