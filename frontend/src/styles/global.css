@@ -580,14 +580,13 @@ a:hover {
 .sources-group__header {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 6px;
   margin-bottom: 8px;
 }
 
 .sources-group__header h2 {
   font-size: 16px;
   font-weight: 600;
-  margin-right: auto;
 }
 
 .btn-group {
