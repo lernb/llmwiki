@@ -616,28 +616,19 @@ a:hover {
 }
 
 .sources__table td:first-child {
-  position: relative;
   max-width: 300px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding-right: 50px;
-}
-
-.filename-text {
-  display: inline;
 }
 
 .source-badge--done {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
+  display: inline;
   font-size: 11px;
   padding: 1px 6px;
   border-radius: 4px;
   font-weight: 500;
-  white-space: nowrap;
+  margin-left: 4px;
   background: rgba(76, 175, 80, 0.15);
   color: #66bb6a;
 }
