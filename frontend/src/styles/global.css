@@ -671,6 +671,7 @@ a:hover {
   cursor: pointer;
   font-weight: 600;
   font-size: 14px;
+  line-height: 1;
   transition: background 0.12s;
 }
 .btn-primary:disabled {
@@ -757,6 +758,68 @@ a:hover {
 .sources__actions > * {
   flex: 1;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* ─── Pagination ──────────────────────────────────────────────────── */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px 0;
+  flex-wrap: wrap;
+}
+
+.pagination__info {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.pagination__controls {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.pagination__btn {
+  min-width: 32px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 13px;
+  text-align: center;
+  transition: background 0.12s, border-color 0.12s;
+}
+.pagination__btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  border-color: var(--accent);
+}
+.pagination__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.pagination__btn--active {
+  background: var(--btn-bg);
+  color: #fff;
+  border-color: var(--btn-bg);
+  font-weight: 600;
+}
+
+.pagination__size select {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
 }
 
 /* Sources - Ingest log */

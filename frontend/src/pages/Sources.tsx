@@ -18,7 +18,15 @@ export default function Sources() {
   const [ingestingSet, setIngestingSet] = useState<Set<string>>(new Set());
   const [ingestingAll, setIngestingAll] = useState(false);
   const [log, setLog] = useState<IngestResult[]>([]);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const totalPages = Math.max(1, Math.ceil(sources.length / pageSize));
+  const pagedSources = sources.slice((page - 1) * pageSize, page * pageSize);
+
+  // Reset to page 1 when sources change
+  useEffect(() => { setPage(1); }, [sources.length]);
 
   const fetchSources = () => {
     setLoading(true);
@@ -200,7 +208,7 @@ export default function Sources() {
               </tr>
             </thead>
             <tbody>
-              {sources.map((s) => (
+              {pagedSources.map((s) => (
                 <tr key={s.filename}>
                   <td>
                     <span className="filename-text">{s.filename}</span>
@@ -255,6 +263,60 @@ export default function Sources() {
               ))}
             </tbody>
           </table>
+
+          {/* Pagination */}
+          {sources.length > 0 && (
+            <div className="pagination">
+              <div className="pagination__info">
+                共 {sources.length} 条，第 {page}/{totalPages} 页
+              </div>
+              <div className="pagination__controls">
+                <button
+                  className="pagination__btn"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  上一页
+                </button>
+                {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                  let pageNum: number;
+                  if (totalPages <= 7) {
+                    pageNum = i + 1;
+                  } else if (page <= 4) {
+                    pageNum = i + 1;
+                  } else if (page >= totalPages - 3) {
+                    pageNum = totalPages - 6 + i;
+                  } else {
+                    pageNum = page - 3 + i;
+                  }
+                  return (
+                    <button
+                      key={pageNum}
+                      className={`pagination__btn${pageNum === page ? " pagination__btn--active" : ""}`}
+                      onClick={() => setPage(pageNum)}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+                <button
+                  className="pagination__btn"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                >
+                  下一页
+                </button>
+              </div>
+              <div className="pagination__size">
+                <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}>
+                  <option value={10}>10条/页</option>
+                  <option value={20}>20条/页</option>
+                  <option value={50}>50条/页</option>
+                  <option value={100}>100条/页</option>
+                </select>
+              </div>
+            </div>
+          )}
         </>
       )}
 
