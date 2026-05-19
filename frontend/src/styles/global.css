@@ -694,6 +694,7 @@ a:hover {
 }
 
 .btn-primary {
+  min-width: 88px;
   padding: 8px 20px;
   min-width: 88px;
   background: var(--btn-bg);
@@ -715,7 +716,6 @@ a:hover {
 
 .btn-sm {
   padding: 4px 12px;
-  min-width: 72px;
   text-align: center;
   font-size: 13px;
   border-radius: 4px;
