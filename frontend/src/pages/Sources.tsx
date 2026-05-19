@@ -202,15 +202,18 @@ export default function Sources() {
             <tbody>
               {sources.map((s) => (
                 <tr key={s.filename}>
-                  <td>{s.filename}</td>
+                  <td>
+                    <span className="filename-text">{s.filename}</span>
+                    {s.ingested && (
+                      <span className="source-badge source-badge--done">已消化</span>
+                    )}
+                  </td>
                   <td>{formatSize(s.size)}</td>
                   <td className="sources__status-cell">
                     {isIngesting(s.filename) ? (
                       <span className="source-status source-status--ingesting">⏳ 消化中...</span>
                     ) : s.ingested ? (
-                      <span className="source-status source-status--ok">
-                        ✅ {formatTime(s.lastIngested)}
-                      </span>
+                      <span>✅ {formatTime(s.lastIngested)}</span>
                     ) : (
                       <span className="source-status source-status--pending">⏳ 待消化</span>
                     )}
