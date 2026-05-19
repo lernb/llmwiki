@@ -784,8 +784,12 @@ a:hover {
 }
 
 .sources__table--pending { table-layout: fixed; }
+.sources__table--pending th:nth-child(2),
+.sources__table--pending td:nth-child(2) { width: 80px; }
+.sources__table--pending th:nth-child(3),
+.sources__table--pending td:nth-child(3) { width: 140px; }
 .sources__table--pending th:nth-child(4),
-.sources__table--pending td:nth-child(4) { width: 210px; }
+.sources__table--pending td:nth-child(4) { width: 210px; overflow: visible; }
 
 .sources__actions > * {
   flex: 1;
