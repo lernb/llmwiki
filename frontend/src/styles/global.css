@@ -789,7 +789,7 @@ a:hover {
 .sources__table th:nth-child(3),
 .sources__table td:nth-child(3) { width: 140px; }
 .sources__table th:nth-child(4),
-.sources__table td:nth-child(4) { width: 220px; overflow: visible; }
+.sources__table td:nth-child(4) { width: 280px; overflow: visible; }
 
 .sources__table td:first-child { overflow: visible; }
 
