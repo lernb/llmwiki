@@ -639,8 +639,18 @@ a:hover {
 
 .sources__table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
 }
+
+.sources__table th:nth-child(1),
+.sources__table td:nth-child(1) { width: auto; }
+.sources__table th:nth-child(2),
+.sources__table td:nth-child(2) { width: 80px; }
+.sources__table th:nth-child(3),
+.sources__table td:nth-child(3) { width: 140px; }
+.sources__table th:nth-child(4),
+.sources__table td:nth-child(4) { width: 220px; overflow: visible; }
 
 .sources__table th, .sources__table td {
   text-align: left;

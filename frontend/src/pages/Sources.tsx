@@ -201,7 +201,7 @@ export default function Sources() {
                       className="btn-primary btn-sm"
                       onClick={() => handleIngest(s.filename, s.ingested)}
                       disabled={ingestingAll}
-                      style={s.ingested ? {} : { letterSpacing: "0.6em" }}
+                      style={s.ingested ? {} : { minWidth: 78 }}
                     >
                       {s.ingested ? "🔄 重新消化" : "🧠 消化"}
                     </button>
