@@ -671,7 +671,6 @@ a:hover {
   cursor: pointer;
   font-weight: 600;
   font-size: 14px;
-  line-height: 1;
   transition: background 0.12s;
 }
 .btn-primary:disabled {
