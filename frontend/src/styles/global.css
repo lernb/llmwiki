@@ -694,9 +694,7 @@ a:hover {
 }
 
 .btn-primary {
-  min-width: 88px;
   padding: 8px 20px;
-  min-width: 88px;
   background: var(--btn-bg);
   color: #fff;
   border: 1px solid transparent;
