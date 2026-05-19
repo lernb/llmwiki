@@ -580,13 +580,31 @@ a:hover {
 .sources-group__header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 12px;
   margin-bottom: 8px;
 }
 
 .sources-group__header h2 {
   font-size: 16px;
   font-weight: 600;
+  margin-right: auto;
+}
+
+.btn-group {
+  padding: 4px 12px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1.5;
+  transition: background 0.12s, color 0.12s;
+}
+.btn-group:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--accent);
 }
 
 .sources__upload {
@@ -716,18 +734,19 @@ a:hover {
   animation: blink 1.2s ease-in-out infinite;
 }
 
-.btn-ingesting-all {
-  padding: 8px 20px;
-  background: var(--danger);
-  color: #fff;
-  border: 1px solid transparent;
-  border-radius: 6px;
+.btn-group-stop {
+  padding: 4px 12px;
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  border-radius: 4px;
   cursor: pointer;
-  font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  transition: background 0.12s;
 }
-.btn-ingesting-all:hover {
-  opacity: 0.85;
+.btn-group-stop:hover {
+  background: rgba(239, 83, 80, 0.12);
 }
 
 .sources__status-cell {

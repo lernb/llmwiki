@@ -149,11 +149,11 @@ export default function Sources() {
           <h2>{title}（{items.length}）</h2>
           {anyItemIngesting || ingestingAll ? null : (
             <button
-              className="btn-primary"
+              className="btn-group"
               onClick={() => handleIngestAll(allFilenames)}
               disabled={anyIngesting}
             >
-              {allFilenames === pendingFiles ? "🧠 消化全部" : "🔄 重新消化全部"}
+              {allFilenames === pendingFiles ? "全部消化" : "全部重新消化"}
             </button>
           )}
         </div>
@@ -273,12 +273,12 @@ export default function Sources() {
       ) : (
         <>
           {ingestingAll && (
-            <div style={{ marginBottom: 12 }}>
+            <div style={{ marginBottom: 16 }}>
               <button
-                className="btn-ingesting-all"
+                className="btn-group-stop"
                 onClick={() => fetch("/api/ingest/cancel-all", { method: "POST" })}
               >
-                ⏹ 停止全部
+                ⏹ 停止全部消化
               </button>
             </div>
           )}
