@@ -639,27 +639,43 @@ a:hover {
 
 .sources__table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
 }
 
+.sources__table th:nth-child(1),
+.sources__table td:nth-child(1) { width: auto; }
+.sources__table th:nth-child(2),
+.sources__table td:nth-child(2) { width: 80px; }
+.sources__table th:nth-child(3),
+.sources__table td:nth-child(3) { width: 130px; }
+.sources__table th:nth-child(4),
+.sources__table td:nth-child(4) { width: 200px; }
+
 .sources__table th, .sources__table td {
   text-align: left;
-  padding: 10px 12px;
+  padding: 10px 8px;
   border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sources__table td:first-child {
-  max-width: 300px;
-  overflow: hidden;
+  overflow: visible;
+}
+
+.sources__table td:nth-child(4) {
+  overflow: visible;
 }
 
 .filename-text {
   display: inline-block;
+  max-width: calc(100% - 56px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   vertical-align: middle;
-  max-width: calc(100% - 52px);
 }
 
 .source-badge--done {
@@ -668,7 +684,7 @@ a:hover {
   padding: 1px 6px;
   border-radius: 4px;
   font-weight: 500;
-  margin-left: 4px;
+  margin-left: 2px;
   vertical-align: middle;
   background: rgba(76, 175, 80, 0.15);
   color: #66bb6a;
