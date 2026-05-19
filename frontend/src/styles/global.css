@@ -617,29 +617,27 @@ a:hover {
 
 .sources__table td:first-child {
   position: relative;
+  max-width: 300px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding-right: 56px;
+  padding-right: 50px;
 }
 
 .filename-text {
   display: inline;
-  vertical-align: middle;
 }
 
-.source-badge {
-  font-size: 11px;
-  padding: 1px 6px;
-  border-radius: 4px;
-  font-weight: 500;
-  white-space: nowrap;
-}
 .source-badge--done {
   position: absolute;
   right: 8px;
   top: 50%;
   transform: translateY(-50%);
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+  white-space: nowrap;
   background: rgba(76, 175, 80, 0.15);
   color: #66bb6a;
 }
