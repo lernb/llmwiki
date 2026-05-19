@@ -617,18 +617,26 @@ a:hover {
 
 .sources__table td:first-child {
   max-width: 300px;
-  white-space: nowrap;
+  overflow: hidden;
+}
+
+.filename-text {
+  display: inline-block;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+  max-width: calc(100% - 52px);
 }
 
 .source-badge--done {
-  display: inline;
+  display: inline-block;
   font-size: 11px;
   padding: 1px 6px;
   border-radius: 4px;
   font-weight: 500;
   margin-left: 4px;
+  vertical-align: middle;
   background: rgba(76, 175, 80, 0.15);
   color: #66bb6a;
 }
