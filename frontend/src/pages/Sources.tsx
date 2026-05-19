@@ -331,7 +331,9 @@ export default function Sources() {
             >
               <div className="log-entry__header">
                 <strong>{r.sourceFile}</strong>
-                <span className={`log-status log-status--${r.status}`}>{r.status}</span>
+                <span className={`log-status log-status--${r.status}`}>
+                  {r.status === "success" ? "完成" : r.status === "cancelled" ? "已取消" : "失败"}
+                </span>
               </div>
               <p className="log-entry__msg">{r.message}</p>
               {(r.pagesCreated.length > 0 || r.pagesUpdated.length > 0) && (
