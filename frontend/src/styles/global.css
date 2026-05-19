@@ -573,20 +573,19 @@ a:hover {
   margin-bottom: 20px;
 }
 
-.sources-group-row td {
-  padding: 0 !important;
-  border-bottom: none !important;
+.sources-group {
+  margin-bottom: 24px;
 }
 
-.sources-group-label {
+.sources-group__header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 8px 6px;
+  gap: 6px;
+  margin-bottom: 8px;
 }
 
-.sources-group-label span {
-  font-size: 14px;
+.sources-group__header h2 {
+  font-size: 16px;
   font-weight: 600;
 }
 
@@ -695,7 +694,6 @@ a:hover {
 }
 
 .btn-primary {
-  min-width: 88px;
   padding: 8px 20px;
   min-width: 88px;
   background: var(--btn-bg);
@@ -785,7 +783,15 @@ a:hover {
   align-items: center;
 }
 
+.sources__table { table-layout: fixed; }
+.sources__table th:nth-child(2),
+.sources__table td:nth-child(2) { width: 80px; }
+.sources__table th:nth-child(3),
+.sources__table td:nth-child(3) { width: 140px; }
+.sources__table th:nth-child(4),
+.sources__table td:nth-child(4) { width: 220px; overflow: visible; }
 
+.sources__table td:first-child { overflow: visible; }
 
 .sources__actions > * {
   flex: 1;
