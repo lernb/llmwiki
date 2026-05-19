@@ -118,8 +118,10 @@ export default function Sources() {
   };
 
   const handleIngestAll = async (files?: string[]) => {
-    const label = files ? `选中的 ${files.length} 个源文件` : `全部 ${sources.length} 个源文件`;
-    if (!confirm(`确定要消化${label}吗？这将消耗 API 额度。`)) return;
+    const isReingest = files === ingestedFiles;
+    const count = files?.length ?? sources.length;
+    const label = isReingest ? `重新消化全部 ${count} 个已消化的源文件` : `消化全部 ${count} 个待消化的源文件`;
+    if (!confirm(`确定要${label}吗？这将消耗 API 额度。`)) return;
     setIngestingAll(true);
     try {
       const res = files
