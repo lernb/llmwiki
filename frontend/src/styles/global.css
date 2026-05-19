@@ -661,12 +661,10 @@ a:hover {
 }
 
 .btn-primary {
-  padding: 8px 20px;
   min-width: 88px;
-  text-align: center;
   background: var(--btn-bg);
   color: #fff;
-  border: none;
+  border: 1px solid transparent;
   border-radius: 6px;
   cursor: pointer;
   font-weight: 600;
@@ -682,9 +680,11 @@ a:hover {
 }
 
 .btn-sm {
-  padding: 4px 12px;
+  padding: 8px 12px;
   text-align: center;
   font-size: 13px;
+  border-radius: 4px;
+  line-height: normal;
 }
 
 /* 消化中呼吸动画 */
@@ -731,14 +731,12 @@ a:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 4px 12px;
   min-width: 44px;
   background: transparent;
   color: var(--text-secondary);
   border: 1px solid var(--border);
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
   text-decoration: none;
   transition: background 0.12s, color 0.12s;
 }
