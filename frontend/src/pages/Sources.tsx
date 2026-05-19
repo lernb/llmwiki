@@ -141,7 +141,7 @@ export default function Sources() {
   const pendingFiles = sources.filter((s) => !s.ingested).map((s) => s.filename);
   const ingestedFiles = sources.filter((s) => s.ingested).map((s) => s.filename);
 
-  const renderTable = (items: SourceItem[], title: string, allFilenames: string[]) => {
+  const renderTable = (items: SourceItem[], title: string, allFilenames: string[], extraClass = "") => {
     if (items.length === 0) return null;
     const anyItemIngesting = items.some((s) => ingestingSet.has(s.filename));
 
@@ -159,7 +159,7 @@ export default function Sources() {
             </button>
           )}
         </div>
-        <table className="sources__table">
+        <table className={`sources__table${extraClass}`}>
           <thead>
             <tr>
               <th>文件名</th>
@@ -285,7 +285,7 @@ export default function Sources() {
             </div>
           )}
 
-          {renderTable(sources.filter((s) => !s.ingested), "📤 待消化", pendingFiles)}
+          {renderTable(sources.filter((s) => !s.ingested), "📤 待消化", pendingFiles, " sources__table--pending")}
           {renderTable(sources.filter((s) => s.ingested), "✅ 已消化", ingestedFiles)}
 
           {/* Ingestion Log */}
