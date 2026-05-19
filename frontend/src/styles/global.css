@@ -688,14 +688,16 @@ a:hover {
   line-height: normal;
 }
 
-/* 消化中呼吸动画 */
-@keyframes breathe {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.6; transform: scale(0.96); }
+/* 消化中闪烁动画 */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
 }
 
-.btn-ingesting {
-  animation: breathe 1.2s ease-in-out infinite;
+.source-status--ingesting {
+  color: #ff9800;
+  font-weight: 700;
+  animation: blink 0.6s ease-in-out infinite;
 }
 
 .btn-ingesting-all {
@@ -707,15 +709,9 @@ a:hover {
   cursor: pointer;
   font-weight: 600;
   font-size: 14px;
-  animation: breathe 1.2s ease-in-out infinite;
 }
 .btn-ingesting-all:hover {
   opacity: 0.85;
-}
-
-.source-status--ingesting {
-  color: #ffb74d;
-  animation: breathe 1.2s ease-in-out infinite;
 }
 
 .sources__status-cell {

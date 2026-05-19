@@ -17,7 +17,7 @@ sourcesRouter.get("/", (c) => {
     const ingest = statusMap.get(src.filename);
     return {
       ...src,
-      ingested: !!ingest,
+      ingested: ingest?.status === "success",
       lastIngested: ingest?.lastIngested ?? null,
       ingestStatus: ingest?.status ?? null,
     };

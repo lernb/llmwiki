@@ -229,7 +229,7 @@ export default function Sources() {
                   <td className="sources__actions">
                     {isIngesting(s.filename) ? (
                       <button
-                        className="btn-danger btn-sm btn-ingesting"
+                        className="btn-danger btn-sm"
                         onClick={() => handleCancel(s.filename)}
                         disabled={cancelling.has(s.filename)}
                       >
