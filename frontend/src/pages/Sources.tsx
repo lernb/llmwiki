@@ -3,15 +3,8 @@ import { Link } from "react-router-dom";
 import type { SourceSummary, IngestResult } from "../api/client";
 import { getSources, uploadSource, deleteSource, ingestSource, ingestAllSources } from "../api/client";
 
-// Extended source info with ingestion status from backend
-interface SourceItem extends SourceSummary {
-  ingested: boolean;
-  lastIngested: number | null;
-  ingestStatus: string | null;
-}
-
 export default function Sources() {
-  const [sources, setSources] = useState<SourceItem[]>([]);
+  const [sources, setSources] = useState<SourceSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   // Track multiple concurrent ingest operations
@@ -31,10 +24,8 @@ export default function Sources() {
     setLoading(true);
     getSources()
       .then((data) => {
-        const items = data as unknown as SourceItem[];
-        // Newest first
-        items.sort((a, b) => b.updated - a.updated);
-        setSources(items);
+        data.sort((a, b) => b.updated - a.updated);
+        setSources(data);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -43,11 +34,13 @@ export default function Sources() {
   useEffect(() => { fetchSources(); }, []);
 
   const handleUpload = async () => {
-    const file = fileRef.current?.files?.[0];
-    if (!file) return;
+    const files = fileRef.current?.files;
+    if (!files || files.length === 0) return;
     setUploading(true);
     try {
-      await uploadSource(file);
+      for (const file of Array.from(files)) {
+        await uploadSource(file);
+      }
       if (fileRef.current) fileRef.current.value = "";
       fetchSources();
     } catch (e: any) {
@@ -155,7 +148,7 @@ export default function Sources() {
     );
   };
 
-  const renderTable = (items: SourceItem[], title: string, allFilenames: string[]) => {
+  const renderTable = (items: SourceSummary[], title: string, allFilenames: string[]) => {
     if (items.length === 0) return null;
     const anyItemIngesting = items.some((s) => ingestingSet.has(s.filename));
 
