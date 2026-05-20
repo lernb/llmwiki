@@ -16,8 +16,7 @@ html {
   transition: background-color 0.3s, color 0.3s;
 }
 
-[data-theme="dark"],
-:root {
+[data-theme="dark"] {
   --bg-primary: #1a1a2e;
   --bg-secondary: #16213e;
   --bg-card: #1e2a45;
