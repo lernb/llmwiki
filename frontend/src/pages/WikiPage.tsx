@@ -109,9 +109,9 @@ export default function WikiPage() {
             remarkPlugins={[remarkGfm]}
             rehypePlugins={[rehypeRaw]}
             components={{
-              h1: ({ children, ...props }) => <h1 id={getHeadingId(children)} {...props}>{children}</h1>,
-              h2: ({ children, ...props }) => <h2 id={getHeadingId(children)} {...props}>{children}</h2>,
-              h3: ({ children, ...props }) => <h3 id={getHeadingId(children)} {...props}>{children}</h3>,
+              h1: ({ children, ...props }) => <h1 {...props} id={getHeadingId(children)}>{children}</h1>,
+              h2: ({ children, ...props }) => <h2 {...props} id={getHeadingId(children)}>{children}</h2>,
+              h3: ({ children, ...props }) => <h3 {...props} id={getHeadingId(children)}>{children}</h3>,
             }}
           >
             {renderContent(page.content)}
