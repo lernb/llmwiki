@@ -1,7 +1,12 @@
 import { Hono } from "hono";
+import { z } from "zod";
 import { listPages, readPage, writePage, deletePage } from "../storage/fileStore.js";
 import { parseLinks, getBacklinks, ensureIndexPage, resolveLinkTarget, invalidateTitleCache } from "../core/engine.js";
 import { buildIndex } from "../core/search.js";
+
+const updatePageSchema = z.object({
+  content: z.string().min(1, "content cannot be empty"),
+});
 
 const pagesRouter = new Hono();
 
@@ -55,7 +60,12 @@ pagesRouter.get("/:slug", (c) => {
 // Update/create a page
 pagesRouter.put("/:slug", async (c) => {
   const slug = c.req.param("slug");
-  const body = await c.req.json();
+  let body: { content: string };
+  try {
+    body = updatePageSchema.parse(await c.req.json());
+  } catch {
+    return c.json({ error: "content is required and must be a non-empty string" }, 400);
+  }
   writePage(slug, body.content);
   buildIndex();
   invalidateTitleCache();
