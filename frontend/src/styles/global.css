@@ -785,7 +785,7 @@ a:hover {
 
 .sources__table { table-layout: fixed; }
 .sources__table th:nth-child(2),
-.sources__table td:nth-child(2) { width: 80px; }
+.sources__table td:nth-child(2) { width: 100px; }
 .sources__table th:nth-child(3),
 .sources__table td:nth-child(3) { width: 140px; }
 .sources__table th:nth-child(4),
