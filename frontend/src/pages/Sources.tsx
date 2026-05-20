@@ -18,15 +18,14 @@ export default function Sources() {
   const [ingestingSet, setIngestingSet] = useState<Set<string>>(new Set());
   const [ingestingAll, setIngestingAll] = useState(false);
   const [log, setLog] = useState<IngestResult[]>([]);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [cancelling, setCancelling] = useState<Set<string>>(new Set());
+  const [pendingPage, setPendingPage] = useState(1);
+  const [ingestedPage, setIngestedPage] = useState(1);
+  const PAGE_SIZE = 10;
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const totalPages = Math.max(1, Math.ceil(sources.length / pageSize));
-  const pagedSources = sources.slice((page - 1) * pageSize, page * pageSize);
-
-  // Reset to page 1 when sources change
-  useEffect(() => { setPage(1); }, [sources.length]);
+  // Reset pagination when sources change
+  useEffect(() => { setPendingPage(1); setIngestedPage(1); }, [sources.length]);
 
   const fetchSources = () => {
     setLoading(true);
@@ -73,8 +72,6 @@ export default function Sources() {
       new CustomEvent("pages-updated", { detail: { created: createdSlugs } })
     );
   };
-
-  const [cancelling, setCancelling] = useState<Set<string>>(new Set());
 
   const handleIngest = async (filename: string, isReingest: boolean) => {
     if (isReingest && !confirm(`"${filename}" 已消化过，确定要重新消化吗？`)) return;
@@ -138,8 +135,25 @@ export default function Sources() {
     }
   };
 
-  const pendingFiles = sources.filter((s) => !s.ingested).map((s) => s.filename);
-  const ingestedFiles = sources.filter((s) => s.ingested).map((s) => s.filename);
+  const pendingItems = sources.filter((s) => !s.ingested);
+  const ingestedItems = sources.filter((s) => s.ingested);
+  const pendingFiles = pendingItems.map((s) => s.filename);
+  const ingestedFiles = ingestedItems.map((s) => s.filename);
+  const pagedPending = pendingItems.slice((pendingPage - 1) * PAGE_SIZE, pendingPage * PAGE_SIZE);
+  const pagedIngested = ingestedItems.slice((ingestedPage - 1) * PAGE_SIZE, ingestedPage * PAGE_SIZE);
+
+  const PaginationBar = ({ page, total, onChange }: { page: number; total: number; onChange: (p: number) => void }) => {
+    if (total <= 1) return null;
+    return (
+      <div className="pagination">
+        <div className="pagination__info">第 {page} / {total} 页</div>
+        <div className="pagination__controls">
+          <button className="pagination__btn" disabled={page <= 1} onClick={() => onChange(page - 1)}>上一页</button>
+          <button className="pagination__btn" disabled={page >= total} onClick={() => onChange(page + 1)}>下一页</button>
+        </div>
+      </div>
+    );
+  };
 
   const renderTable = (items: SourceItem[], title: string, allFilenames: string[]) => {
     if (items.length === 0) return null;
@@ -285,8 +299,10 @@ export default function Sources() {
             </div>
           )}
 
-          {renderTable(sources.filter((s) => !s.ingested), "📤 待消化", pendingFiles)}
-          {renderTable(sources.filter((s) => s.ingested), "✅ 已消化", ingestedFiles)}
+          {renderTable(pagedPending, "📤 待消化", pendingFiles)}
+          <PaginationBar page={pendingPage} total={Math.ceil(pendingItems.length / PAGE_SIZE)} onChange={setPendingPage} />
+          {renderTable(pagedIngested, "✅ 已消化", ingestedFiles)}
+          <PaginationBar page={ingestedPage} total={Math.ceil(ingestedItems.length / PAGE_SIZE)} onChange={setIngestedPage} />
 
           {/* Ingestion Log */}
           {log.length > 0 && (
