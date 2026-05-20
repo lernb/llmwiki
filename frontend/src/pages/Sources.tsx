@@ -321,36 +321,6 @@ export default function Sources() {
         </>
       )}
 
-      {/* Ingestion Log */}
-      {log.length > 0 && (
-        <section className="sources__log">
-          <h2>消化日志</h2>
-          {log.map((r, i) => (
-            <div
-              key={i}
-              className={`log-entry ${r.status === "success" ? "log-entry--success" : "log-entry--error"}`}
-            >
-              <div className="log-entry__header">
-                <strong>{r.sourceFile}</strong>
-                <span className={`log-status log-status--${r.status}`}>
-                  {r.status === "success" ? "完成" : r.status === "cancelled" ? "已取消" : "失败"}
-                </span>
-              </div>
-              <p className="log-entry__msg">{r.message}</p>
-              {(r.pagesCreated.length > 0 || r.pagesUpdated.length > 0) && (
-                <div className="log-entry__pages">
-                  {r.pagesCreated.map((s) => (
-                    <Link key={s} to={`/page/${s}`} className="log-page-link">+ {s}</Link>
-                  ))}
-                  {r.pagesUpdated.map((s) => (
-                    <Link key={s} to={`/page/${s}`} className="log-page-link">~ {s}</Link>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </section>
-      )}
     </div>
   );
 }
