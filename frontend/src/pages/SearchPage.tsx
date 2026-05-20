@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useEffect, useState, useRef } from "react";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import type { SearchHit } from "../api/client";
 import { searchWiki } from "../api/client";
 
@@ -9,6 +9,13 @@ export default function SearchPage() {
   const [results, setResults] = useState<SearchHit[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [input, setInput] = useState(query);
+  const navigate = useNavigate();
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setInput(query);
+  }, [query]);
 
   useEffect(() => {
     if (!query.trim()) return;
@@ -23,6 +30,18 @@ export default function SearchPage() {
   return (
     <div className="search-page">
       <h1>🔍 搜索</h1>
+
+      <form className="search-page__form" onSubmit={(e) => { e.preventDefault(); if (input.trim()) navigate(`/search?q=${encodeURIComponent(input.trim())}`); }}>
+        <input
+          ref={inputRef}
+          type="text"
+          className="search-page__input"
+          placeholder="输入关键词搜索 Wiki 内容..."
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+        />
+        <button type="submit" className="btn-primary">搜索</button>
+      </form>
 
       {!searched && !query && (
         <div className="empty">输入关键词搜索 Wiki 内容</div>

@@ -1105,6 +1105,27 @@ a:hover {
   margin-bottom: 16px;
 }
 
+.search-page__form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.search-page__input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 15px;
+  outline: none;
+}
+
+.search-page__input:focus {
+  border-color: var(--accent);
+}
+
 .search-page__info {
   color: var(--text-secondary);
   margin-bottom: 16px;
