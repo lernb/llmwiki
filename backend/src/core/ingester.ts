@@ -206,13 +206,14 @@ export async function ingestSource(filename: string): Promise<IngestResult> {
       // Sanitize slug
       const slug = action.slug.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9\u4e00-\u9fff-]/g, "");
 
-      writePage(slug, action.content);
-
+      // Classify before writePage so pageExists check is accurate
       if (action.action === "create" || !pageExists(slug)) {
         created.push(slug);
       } else {
         updated.push(slug);
       }
+
+      writePage(slug, action.content);
     }
 
     // Rebuild search index and title cache
