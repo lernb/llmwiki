@@ -74,7 +74,8 @@ export function allMarkdownText(): string {
 // ─── Source Files ────────────────────────────────────────────────────
 
 export function saveSource(filename: string, content: Buffer | string): string {
-  const path = resolve(SOURCES_DIR, filename);
+  const safeFilename = basename(filename);
+  const path = resolve(SOURCES_DIR, safeFilename);
   mkdirSync(resolve(path, ".."), { recursive: true });
   writeFileSync(path, content);
   return path;
@@ -100,7 +101,8 @@ export function listSources(): Array<{ filename: string; size: number; updated: 
 
 /** Read source file content as text. Supports PDF extraction. */
 export async function readSource(filename: string): Promise<string | null> {
-  const path = resolve(SOURCES_DIR, filename);
+  const safeFilename = basename(filename);
+  const path = resolve(SOURCES_DIR, safeFilename);
   if (!existsSync(path)) return null;
 
   if (filename.toLowerCase().endsWith(".pdf")) {
@@ -130,7 +132,8 @@ async function extractPdfText(path: string, filename: string): Promise<string | 
 }
 
 export function deleteSource(filename: string): boolean {
-  const path = resolve(SOURCES_DIR, filename);
+  const safeFilename = basename(filename);
+  const path = resolve(SOURCES_DIR, safeFilename);
   if (existsSync(path)) {
     unlinkSync(path);
     return true;

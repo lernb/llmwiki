@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { statSync, existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { resolve, basename } from "node:path";
 import { listSources, readSource, saveSource, deleteSource } from "../storage/fileStore.js";
 import { getAllIngestStatuses, getIngestStatus, removeIngestRecord } from "../storage/ingestMeta.js";
 import { SOURCES_DIR } from "../config.js";
@@ -57,7 +57,7 @@ sourcesRouter.get("/:filename", async (c) => {
 
 // Download a source file
 sourcesRouter.get("/:filename/download", (c) => {
-  const filename = c.req.param("filename");
+  const filename = basename(c.req.param("filename"));
   const path = resolve(SOURCES_DIR, filename);
   if (!existsSync(path)) {
     return c.json({ error: `Source '${filename}' not found` }, 404);
