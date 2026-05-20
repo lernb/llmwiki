@@ -252,8 +252,9 @@ export default function GraphPage() {
     const resize = () => {
       const s = resizeCanvas();
       W = s.W; H = s.H;
-      layoutRef.current = null;
+      // draw with old layout first, then invalidate so next effect rebuilds
       draw();
+      layoutRef.current = null;
     };
 
     canvas.addEventListener("wheel", wheel, { passive: false });
