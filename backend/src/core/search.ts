@@ -1,6 +1,7 @@
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { WIKI_DIR } from "../config.js";
+import { titleFromSlug } from "../storage/fileStore.js";
 
 // ─── In-Memory Inverted Index ───────────────────────────────────────
 
@@ -96,26 +97,13 @@ export function search(query: string, topK = 20): SearchHit[] {
 
   return ranked.map(([slug, score]) => ({
     slug,
-    title: titleFromFile(slug) || slug,
+    title: titleFromSlug(slug) || slug,
     snippet: generateSnippet(slug, tokens),
     score,
   }));
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────
-
-function titleFromFile(slug: string): string | null {
-  const path = resolve(WIKI_DIR, `${slug}.md`);
-  if (!existsSync(path)) return null;
-  const content = readFileSync(path, "utf-8");
-  for (const line of content.split("\n")) {
-    const trimmed = line.trim();
-    if (trimmed.startsWith("# ") && !trimmed.startsWith("## ")) {
-      return trimmed.slice(2).trim();
-    }
-  }
-  return null;
-}
 
 function generateSnippet(slug: string, queryTokens: string[], contextChars = 120): string {
   const path = resolve(WIKI_DIR, `${slug}.md`);

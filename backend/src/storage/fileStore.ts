@@ -153,3 +153,9 @@ function titleFromFile(path: string): string | null {
   }
   return null;
 }
+
+export function titleFromSlug(slug: string): string | null {
+  const path = resolve(WIKI_DIR, `${slug}.md`);
+  if (!existsSync(path)) return null;
+  return titleFromFile(path);
+}
