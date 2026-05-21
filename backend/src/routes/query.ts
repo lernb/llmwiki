@@ -16,7 +16,7 @@ queryRouter.post("/", async (c) => {
 
   try {
     // 1. Search wiki for relevant pages
-    const searchHits = search(question, 5);
+    const searchHits = search(question, 8);
     let wikiContext = "";
 
     if (searchHits.length > 0) {
@@ -24,7 +24,7 @@ queryRouter.post("/", async (c) => {
       for (const hit of searchHits) {
         const content = readPage(hit.slug);
         if (content) {
-          wikiContext += `### ${hit.title}\n${content.slice(0, 2000)}\n\n---\n\n`;
+          wikiContext += `### ${hit.title}\n${content.slice(0, 3000)}\n\n---\n\n`;
         }
       }
     }
