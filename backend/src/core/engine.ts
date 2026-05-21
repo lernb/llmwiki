@@ -97,7 +97,11 @@ export function getBacklinks(slug: string): Backlink[] {
       if (resolved === slug) {
         const start = Math.max(0, match.index - 40);
         const end = Math.min(content.length, match.index + match[0].length + 40);
-        const context = content.slice(start, end).replace(/\n/g, " ").trim();
+        let context = content.slice(start, end).replace(/\n/g, " ").trim();
+        // Strip complete wiki link syntax [[...]] → display text
+        context = context.replace(/\[\[([^\]|]+)(?:\|[^\]|]+)?\]\]/g, (_m, text) => text.trim());
+        // Remove dangling [[ at end (cut off by slice boundary)
+        context = context.replace(/\[\[[^\[\]]*$/, "").trim();
         backlinks.push({ slug: p.slug, title: p.title, context });
         break;
       }
