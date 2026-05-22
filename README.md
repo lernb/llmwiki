@@ -106,20 +106,17 @@ llmwiki-0/
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
+| `LLM_API_KEY` | — | API Key（所有提供商必填） |
 | `LLM_PROVIDER` | `deepseek` | 模型提供商：`deepseek` / `openai` / `local` |
-| `DEEPSEEK_API_KEY` | — | DeepSeek API 密钥（provider 为 deepseek 时必填） |
-| `LLM_API_KEY` | — | OpenAI 或本地模型 API 密钥 |
-| `LLM_BASE_URL` | 自动适配 | API 地址（local 时需指定，如 `http://127.0.0.1:8080/v1`） |
-| `LLM_MODEL` | 自动适配 | 模型名称 |
-| `DEEPSEEK_BASE_URL` | `https://api.deepseek.com/v1` | DeepSeek 自定义 API 地址 |
-| `DEEPSEEK_MODEL` | `deepseek-v4-flash` | DeepSeek 模型名称 |
+| `LLM_BASE_URL` | 自动适配 | API 地址（local 必填，如 `http://127.0.0.1:8080/v1`） |
+| `LLM_MODEL` | 自动适配 | 模型名称（local 必填） |
 | `PORT` | `8000` | 后端端口 |
 | `HOST` | `127.0.0.1` | 后端监听地址 |
 
 ### 模型提供商说明
 
-**DeepSeek（默认）：** 设置 `LLM_PROVIDER=deepseek` 并配置 `DEEPSEEK_API_KEY`。
+**DeepSeek（默认）：** 设置 `LLM_PROVIDER=deepseek`，地址和模型使用默认值，无需额外配置。
 
-**OpenAI：** 设置 `LLM_PROVIDER=openai` 并配置 `LLM_API_KEY`，可选 `LLM_BASE_URL` 用于代理。
+**OpenAI：** 设置 `LLM_PROVIDER=openai`，地址和模型使用默认值，无需额外配置。
 
 **本地模型：** 设置 `LLM_PROVIDER=local`，配置 `LLM_BASE_URL` 指向兼容 OpenAI 接口的本地服务（如 llama.cpp、Ollama、LM Studio），并指定 `LLM_MODEL`。
