@@ -86,6 +86,7 @@ export function listSources(): Array<{ filename: string; size: number; updated: 
   if (!existsSync(SOURCES_DIR)) return sources;
 
   for (const entry of readdirSync(SOURCES_DIR)) {
+    if (entry.startsWith(".")) continue;
     const fullPath = resolve(SOURCES_DIR, entry);
     const stat = statSync(fullPath);
     if (stat.isFile()) {

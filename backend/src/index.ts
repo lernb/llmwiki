@@ -15,11 +15,18 @@ import { queryRouter } from "./routes/query.js";
 
 const app = new Hono();
 
-// CORS — allow frontend dev server
+// CORS — allow localhost dev servers (any port)
 app.use(
   "/*",
   cors({
-    origin: ["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000", "http://127.0.0.1:3000"],
+    origin: (origin) => {
+      if (!origin) return "*";
+      try {
+        const u = new URL(origin);
+        if (u.hostname === "localhost" || u.hostname === "127.0.0.1") return origin;
+      } catch {}
+      return "http://localhost:3000";
+    },
     credentials: true,
   })
 );

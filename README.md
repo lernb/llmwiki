@@ -1,6 +1,6 @@
 # 📚 LLM Wiki
 
-**Persistent knowledge base compiled by an LLM** — inspired by [Andrej Karpathy's LLM Wiki](https://github.com/karpathy) concept.
+**轻量级持久化知识库，由 LLM 从源文件编译为结构化 Markdown Wiki，支持浏览、搜索、知识图谱与问答。** — 灵感来自 [Andrej Karpathy's LLM Wiki](https://github.com/karpathy) 概念。
 
 原始资料 → LLM 编译 → 结构化 Markdown Wiki → 浏览 / 搜索 / 问答
 
@@ -13,27 +13,28 @@
 ### 安装与运行
 
 ```bash
-# 1. 安装依赖
-npm --prefix backend install
-npm --prefix frontend install
+# 1. 安装所有依赖（后端 + 前端）
+npm run install:all
 
 # 2. 配置环境变量（复制示例文件并编辑）
 cp .env.example .env   # macOS / Linux
 # copy .env.example .env   # Windows
 # 编辑 .env，填入你的 API Key 和模型配置
 
-# 3. 启动后端 (端口 8000)
-npm --prefix backend run dev
-
-# 4. 启动前端 (端口 3000)
-npm --prefix frontend run dev
+# 3. 一键启动（自动检测端口冲突）
+npm run dev
 ```
 
 打开 http://localhost:3000
 
+> **端口冲突处理：** 启动脚本会自动检测 8000（后端）和 3000（前端）是否被占用，若被占用会交互提示：
+> - `k` — 杀掉旧进程并重启
+> - `o` — 使用其他端口
+> - `q` — 退出
+
 ## 使用流程
 
-1. **上传源文件** — 在 📄 源文件 页面上传 .txt / .md 文档
+1. **上传源文件** — 在 📄 源文件 页面上传 .txt / .pdf 文档
 2. **LLM 消化** — 点击 🧠 消化 按钮，LLM 读取源文件并自动创建 Wiki 页面
 3. **浏览 Wiki** — 点击侧边栏页面查看，支持 `[[Wiki 链接]]` 跳转
 4. **知识图谱** — 可视化所有页面的连接关系
@@ -44,29 +45,30 @@ npm --prefix frontend run dev
 
 ```
 llmwiki-0/
-├── backend/                 # Node.js 后端 (Hono + TypeScript)
+├── backend/                   # Node.js 后端 (Hono + TypeScript)
 │   └── src/
-│       ├── index.ts         # 入口
-│       ├── config.ts        # 配置
+│       ├── index.ts           # 入口
+│       ├── config.ts          # 配置
 │       ├── core/
-│       ├── core/
-│       │   ├── engine.ts    # Wiki 引擎（链接解析、图谱）
-│       │   ├── search.ts    # 全文搜索（倒排索引）
-│       │   ├── llm.ts       # LLM API 客户端（支持多提供商）
-│       │   ├── ingester.ts  # LLM 消化管道
-│       │   └── secrets.ts   # 密钥解析（env / 凭据管理器）
-│       ├── routes/           # API 路由
-│       └── storage/          # 文件系统读写
-├── frontend/                # React 前端 (Vite + TypeScript)
+│       │   ├── engine.ts      # Wiki 引擎（链接解析、图谱）
+│       │   ├── search.ts      # 全文搜索（倒排索引）
+│       │   ├── llm.ts         # LLM API 客户端（支持多提供商）
+│       │   ├── ingester.ts    # LLM 消化管道
+│       │   └── secrets.ts     # 密钥解析（env / 凭据管理器）
+│       ├── routes/            # API 路由
+│       └── storage/           # 文件系统读写
+├── frontend/                  # React 前端 (Vite + TypeScript)
 │   └── src/
-│       ├── pages/           # 页面组件
-│       ├── components/      # 通用组件
-│       └── api/             # API 客户端
-├── wiki/                    # LLM 生成的 Wiki 页面（Markdown）
-├── sources/                 # 上传的原始源文件
-├── agents.md                # LLM 行为指令（控制消化质量）
-├── .env.example             # 环境变量配置模板
-└── .env                     # 本地配置（已 gitignore）
+│       ├── pages/             # 页面组件
+│       ├── components/        # 通用组件
+│       └── api/               # API 客户端
+├── scripts/
+│   └── start.mjs              # 启动脚本（端口检测 + 交互提示）
+├── wiki/                      # LLM 生成的 Wiki 页面（仅目录结构入 git）
+├── sources/                   # 上传的原始源文件（仅目录结构入 git）
+├── package.json               # 根目录项目配置（concurrently + cross-env）
+├── agents.md                  # LLM 行为指令（控制消化质量）
+└── .env.example               # 环境变量配置模板
 ```
 
 ## API 端点
