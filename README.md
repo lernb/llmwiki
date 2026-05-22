@@ -106,8 +106,8 @@ llmwiki-0/
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `LLM_API_KEY` | — | API Key（所有提供商必填） |
 | `LLM_PROVIDER` | `deepseek` | 模型提供商：`deepseek` / `openai` / `local` |
+| `LLM_API_KEY` | — | API Key（DeepSeek/OpenAI 必填，local 可不填） |
 | `LLM_BASE_URL` | 自动适配 | API 地址（local 必填，如 `http://127.0.0.1:8080/v1`） |
 | `LLM_MODEL` | 自动适配 | 模型名称（local 必填） |
 | `PORT` | `8000` | 后端端口 |
