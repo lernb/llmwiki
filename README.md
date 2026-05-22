@@ -112,7 +112,7 @@ llmwiki-0/
 | `LLM_BASE_URL` | 自动适配 | API 地址（local 时需指定，如 `http://127.0.0.1:8080/v1`） |
 | `LLM_MODEL` | 自动适配 | 模型名称 |
 | `DEEPSEEK_BASE_URL` | `https://api.deepseek.com/v1` | DeepSeek 自定义 API 地址 |
-| `DEEPSEEK_MODEL` | `deepseek-chat` | DeepSeek 模型名称 |
+| `DEEPSEEK_MODEL` | `deepseek-v4-flash` | DeepSeek 模型名称 |
 | `PORT` | `8000` | 后端端口 |
 | `HOST` | `127.0.0.1` | 后端监听地址 |
 
