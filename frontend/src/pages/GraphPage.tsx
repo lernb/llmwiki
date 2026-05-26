@@ -55,6 +55,15 @@ export default function GraphPage() {
     }
     const maxEdges = Math.max(...Array.from(edgeCount.values()), 1);
 
+    // Adjacency map for highlighting connected nodes
+    const adjacency = new Map<string, Set<string>>();
+    for (const e of graph.edges) {
+      if (!adjacency.has(e.source)) adjacency.set(e.source, new Set());
+      if (!adjacency.has(e.target)) adjacency.set(e.target, new Set());
+      adjacency.get(e.source)!.add(e.target);
+      adjacency.get(e.target)!.add(e.source);
+    }
+
     // ─── Vogel spiral layout (evenly fills the circle) ──────────────
     const cx = W / 2, cy = H / 2;
     const layoutRadius = Math.min(W, H) * 0.40;
@@ -122,9 +131,13 @@ export default function GraphPage() {
         }
       }
 
-      // Highlight sets — direct edges of the showing (hovered/fading) node
+      // Highlight sets — direct edges + connected nodes of the showing node
+      const hlNodes = new Set<string>();
       const hlEdges = new Set<string>();
       if (showingId) {
+        hlNodes.add(showingId);
+        const conn = adjacency.get(showingId);
+        if (conn) for (const nid of conn) hlNodes.add(nid);
         for (const e of graph.edges) {
           if (e.source === showingId || e.target === showingId)
             hlEdges.add(`${e.source}|${e.target}`);
@@ -152,10 +165,10 @@ export default function GraphPage() {
           ctx.strokeStyle = isDark ? "rgba(120,140,170,0.02)" : "rgba(100,120,140,0.035)";
           ctx.lineWidth = 0.3;
         } else if (isHL) {
-          const a = 0.3 + tV * 0.7;
-          const pulse = 0.8 + 0.2 * Math.sin(time * 4);
-          ctx.strokeStyle = isDark ? `hsla(195,45%,55%,${a * pulse})` : `hsla(195,40%,48%,${a * pulse})`;
-          ctx.lineWidth = 0.5 + tV * 1.2;
+          const a = 0.1 + tV * 0.25;
+          const pulse = 0.9 + 0.1 * Math.sin(time * 4);
+          ctx.strokeStyle = isDark ? `rgba(210,220,230,${a * pulse})` : `rgba(80,100,130,${a * pulse})`;
+          ctx.lineWidth = 0.5 + tV * 0.6;
         } else {
           ctx.strokeStyle = isDark ? "rgba(136,153,187,0.12)" : "rgba(102,119,136,0.13)";
           ctx.lineWidth = 0.4;
@@ -169,7 +182,8 @@ export default function GraphPage() {
       // ─── Draw nodes ──────────────────────────────────────────
       for (const node of screenNodes) {
         const isHovered = node.id === showingId;
-        const isDimmed = showingId && !isHovered;
+        const isConnected = hlNodes.has(node.id) && !isHovered;
+        const isDimmed = showingId && !isHovered && !isConnected;
 
         const ratio = node.edgeCount / node.maxEdge;
         const baseR = Math.max(3, 2 + ratio * 20);
@@ -181,14 +195,15 @@ export default function GraphPage() {
 
         if (isDimmed) ctx.globalAlpha = 0.08;
         else if (isHovered) ctx.globalAlpha = 0.5 + hoverTransition * 0.5;
+        else if (isConnected) ctx.globalAlpha = 0.5 + hoverTransition * 0.35;
         else ctx.globalAlpha = 0.65;
 
-        // Glow — breathing pulse, fades with lerp
+        // White glow on hovered node only
         if (isHovered && hoverTransition > 0.01) {
           const p = 0.65 + 0.35 * Math.sin(time * 3);
           const grad = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, r * 4);
-          const ga = 0.4 * hoverTransition * p;
-          grad.addColorStop(0, isDark ? `hsla(195,70%,60%,${ga})` : `hsla(195,60%,55%,${ga * 0.7})`);
+          const ga = 0.25 * hoverTransition * p;
+          grad.addColorStop(0, isDark ? `rgba(210,220,230,${ga})` : `rgba(100,120,150,${ga * 0.6})`);
           grad.addColorStop(1, "rgba(0,0,0,0)");
           ctx.fillStyle = grad;
           ctx.beginPath();
@@ -198,20 +213,25 @@ export default function GraphPage() {
 
         const normalH = isDark ? 30 + ratio * 20 : 35 + ratio * 15;
         const hoverH = isDark ? 72 : 65;
-        const fillH = isHovered ? normalH + (hoverH - normalH) * hoverTransition : normalH;
+        const connH = isDark ? 52 : 52;
+        const fillH = isHovered ? normalH + (hoverH - normalH) * hoverTransition
+          : isConnected ? normalH + (connH - normalH) * hoverTransition
+          : normalH;
         const normalS = isDark ? 35 + ratio * 20 : 30 + ratio * 15;
         const hoverS = isDark ? 90 : 80;
-        const fillS = isHovered ? normalS + (hoverS - normalS) * hoverTransition : normalS;
+        const fillS = isHovered ? normalS + (hoverS - normalS) * hoverTransition
+          : isConnected ? normalS + (10 - normalS) * hoverTransition
+          : normalS;
         ctx.beginPath();
         ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
         ctx.fillStyle = `hsl(${hue}, ${fillS}%, ${fillH}%)`;
         ctx.fill();
 
-        // Label — fades in/out
+        // Label
         if (!isDimmed || hoverTransition > 0.15) {
           const labelSize = Math.max(9, 9 + ratio * 5);
           ctx.fillStyle = isHovered
-            ? (isDark ? `hsla(195,50%,55%,${0.4 + hoverTransition * 0.6 + 0.1 * Math.sin(time * 3 + 0.5)})` : "hsla(195,45%,50%,0.85)")
+            ? (isDark ? `rgba(230,235,240,${0.5 + hoverTransition * 0.5 + 0.08 * Math.sin(time * 3 + 0.5)})` : "rgba(60,70,90,0.85)")
             : textColor;
           ctx.font = `${labelSize}px sans-serif`;
           ctx.textAlign = "center";
