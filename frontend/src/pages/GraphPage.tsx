@@ -85,6 +85,7 @@ export default function GraphPage() {
     let animFrameId: number;
     let rotation = 0;
     let time = 0;
+    const ROTATION_SPEED = 0.0008;
 
     // Mouse tracking
     const mouse = { x: -1e5, y: -1e5 };
@@ -251,7 +252,7 @@ export default function GraphPage() {
 
     // ─── Animation loop ─────────────────────────────────────────
     const animate = () => {
-      rotation += 0.002;
+      if (!hoveredNodeId) rotation += ROTATION_SPEED;
       draw();
       animFrameId = requestAnimationFrame(animate);
     };
