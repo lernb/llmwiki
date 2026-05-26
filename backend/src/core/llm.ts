@@ -69,12 +69,15 @@ export async function chat(
     ? [{ role: "system" as const, content: options.system }, ...messages]
     : messages;
 
-  // Local provider — direct HTTP call, no auth header
+  // Local provider — direct HTTP call
   if (LLM_PROVIDER === "local") {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (LLM_API_KEY) headers["Authorization"] = `Bearer ${LLM_API_KEY}`;
+
     const url = `${baseURL.replace(/\/+$/, "")}/chat/completions`;
     const resp = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({
         model,
         messages: allMessages,
@@ -118,9 +121,9 @@ export async function checkConnection(): Promise<{ ok: boolean; message: string 
       const preset = PRESETS.local;
       const baseURL = LLM_BASE_URL || preset.baseURL;
       const model = LLM_MODEL || preset.model;
-      const resp = await fetch(`${baseURL.replace(/\/+$/, "")}/models`, {
-        headers: { "Accept": "application/json" },
-      });
+      const headers: Record<string, string> = { "Accept": "application/json" };
+      if (LLM_API_KEY) headers["Authorization"] = `Bearer ${LLM_API_KEY}`;
+      const resp = await fetch(`${baseURL.replace(/\/+$/, "")}/models`, { headers });
       if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`);
       return { ok: true, message: `已连接 local / ${model}` };
     }

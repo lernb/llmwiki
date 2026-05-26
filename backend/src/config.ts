@@ -1,4 +1,4 @@
-import "dotenv/config";
+import { config } from "dotenv";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { mkdirSync } from "node:fs";
@@ -6,6 +6,9 @@ import { resolveSecret } from "./core/secrets.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const ROOT_DIR = resolve(__dirname, "../..");
+
+// Load .env from project root (not from process.cwd())
+config({ path: resolve(ROOT_DIR, ".env") });
 
 // Wiki markdown storage
 export const WIKI_DIR = resolve(ROOT_DIR, "wiki");

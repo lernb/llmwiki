@@ -2,7 +2,7 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 
-import { PORT, HOST, WIKI_DIR } from "./config.js";
+import { PORT, HOST, WIKI_DIR, LLM_PROVIDER, LLM_BASE_URL, LLM_MODEL } from "./config.js";
 import { buildIndex } from "./core/search.js";
 import { ensureIndexPage } from "./core/engine.js";
 import { backfillIngestMeta } from "./storage/ingestMeta.js";
@@ -46,6 +46,7 @@ app.route("/api/query", queryRouter);
 
 // Startup
 console.log(`📄 Wiki directory: ${WIKI_DIR}`);
+console.log(`🤖 LLM: provider=${LLM_PROVIDER} url=${LLM_BASE_URL || "(default)"} model=${LLM_MODEL || "(default)"}`);
 backfillIngestMeta();
 const idxSlug = ensureIndexPage();
 console.log(`🏠 Index page: ${idxSlug}`);
