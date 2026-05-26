@@ -39,9 +39,24 @@ function getClient(): OpenAI {
   if (!client) {
     const preset = PRESETS[LLM_PROVIDER] || PRESETS.deepseek;
     const baseURL = LLM_BASE_URL || preset.baseURL;
-    const apiKey = LLM_API_KEY || "sk-no-key-required";
 
-    client = new OpenAI({ apiKey, baseURL });
+    if (LLM_PROVIDER === "local") {
+      client = new OpenAI({
+        apiKey: "sk-no-key-required",
+        baseURL,
+        fetch: (url, init) => {
+          if (init) {
+            const headers = new Headers(init.headers);
+            headers.delete("Authorization");
+            init = { ...init, headers };
+          }
+          return fetch(url, init);
+        },
+      });
+    } else {
+      const apiKey = LLM_API_KEY || "sk-no-key-required";
+      client = new OpenAI({ apiKey, baseURL });
+    }
   }
   return client;
 }

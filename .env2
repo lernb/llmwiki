@@ -1,0 +1,8 @@
+# LLM Wiki Configuration
+
+# DEEPSEEK_API_KEY=API_KEY
+# DEEPSEEK_MODEL=deepseek-v4-flash
+
+LLM_PROVIDER=local
+LLM_BASE_URL=URL
+LLM_MODEL=MODEL

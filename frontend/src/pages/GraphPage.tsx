@@ -185,13 +185,14 @@ export default function GraphPage() {
         // White glow on hovered node only
         if (isHovered && hoverTransition > 0.01) {
           const p = 0.65 + 0.35 * Math.sin(time * 3);
-          const grad = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, r * 4);
+          const glowR = r * 2.5;
+          const grad = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, glowR);
           const ga = 0.25 * hoverTransition * p;
           grad.addColorStop(0, isDark ? `rgba(210,220,230,${ga})` : `rgba(100,120,150,${ga * 0.6})`);
           grad.addColorStop(1, "rgba(0,0,0,0)");
           ctx.fillStyle = grad;
           ctx.beginPath();
-          ctx.arc(node.x, node.y, r * 4, 0, Math.PI * 2);
+          ctx.arc(node.x, node.y, glowR, 0, Math.PI * 2);
           ctx.fill();
         }
 
