@@ -79,6 +79,8 @@ export default function GraphPage() {
     // ─── Animation state ──────────────────────────────────────────
     let animFrameId: number;
     let time = 0;
+    let hoverTransition = 0;
+    let fadeOutNodeId: string | null = null;
     const FLOAT_AMP = 3;
     const mouse = { x: -1e5, y: -1e5 };
     let hoveredNodeId: string | null = null;
@@ -92,6 +94,12 @@ export default function GraphPage() {
     // ─── Draw ─────────────────────────────────────────────────────
     const draw = () => {
       time += 0.016;
+
+      // Hover lerp transition with proper fade-out
+      const showingId = hoveredNodeId || fadeOutNodeId;
+      const targetT = hoveredNodeId ? 1 : 0;
+      hoverTransition += (targetT - hoverTransition) * 0.08;
+      if (hoverTransition < 0.001 && fadeOutNodeId) fadeOutNodeId = null;
 
       // Floating offset from home positions
       screenNodes = homeNodes.map(n => ({
@@ -114,11 +122,11 @@ export default function GraphPage() {
         }
       }
 
-      // Highlight sets — only direct edges of the hovered node
+      // Highlight sets — direct edges of the showing (hovered/fading) node
       const hlEdges = new Set<string>();
-      if (hoveredNodeId) {
+      if (showingId) {
         for (const e of graph.edges) {
-          if (e.source === hoveredNodeId || e.target === hoveredNodeId)
+          if (e.source === showingId || e.target === showingId)
             hlEdges.add(`${e.source}|${e.target}`);
         }
       }
@@ -139,13 +147,15 @@ export default function GraphPage() {
 
         const isHL = hlEdges.has(`${edge.source}|${edge.target}`) || hlEdges.has(`${edge.target}|${edge.source}`);
 
-        if (hoveredNodeId && !isHL) {
+        const tV = hoverTransition;
+        if (showingId && !isHL) {
           ctx.strokeStyle = isDark ? "rgba(120,140,170,0.02)" : "rgba(100,120,140,0.035)";
           ctx.lineWidth = 0.3;
         } else if (isHL) {
-          const pulse = 0.75 + 0.25 * Math.sin(time * 4);
-          ctx.strokeStyle = isDark ? `rgba(100,215,255,${pulse})` : `rgba(0,150,220,${pulse})`;
-          ctx.lineWidth = 0.8 + 0.4 * Math.sin(time * 4);
+          const a = 0.3 + tV * 0.7;
+          const pulse = 0.8 + 0.2 * Math.sin(time * 4);
+          ctx.strokeStyle = isDark ? `rgba(100,215,255,${a * pulse})` : `rgba(0,150,220,${a * pulse})`;
+          ctx.lineWidth = 0.5 + tV * 1.2;
         } else {
           ctx.strokeStyle = isDark ? "rgba(136,153,187,0.12)" : "rgba(102,119,136,0.13)";
           ctx.lineWidth = 0.4;
@@ -158,25 +168,26 @@ export default function GraphPage() {
 
       // ─── Draw nodes ──────────────────────────────────────────
       for (const node of screenNodes) {
-        const isHovered = node.id === hoveredNodeId;
-        const isDimmed = hoveredNodeId && !isHovered;
+        const isHovered = node.id === showingId;
+        const isDimmed = showingId && !isHovered;
 
         const ratio = node.edgeCount / node.maxEdge;
         const baseR = Math.max(3, 2 + ratio * 20);
         const pulse = 1 + 0.06 * Math.sin(time * 2 + (homeNodes.find(h => h.id === node.id)?.phaseX ?? 0));
-        const r = baseR * pulse;
+        const scale = isHovered ? 1 + hoverTransition * 0.35 : 1;
+        const r = baseR * pulse * scale;
 
         const hue = 195;
 
-        if (isDimmed) ctx.globalAlpha = 0.1;
-        else if (isHovered) ctx.globalAlpha = 1;
+        if (isDimmed) ctx.globalAlpha = 0.08;
+        else if (isHovered) ctx.globalAlpha = 0.55 + hoverTransition * 0.45;
         else ctx.globalAlpha = 0.65;
 
-        // Glow — breathing pulse
-        if (isHovered) {
-          const pulse = 0.65 + 0.35 * Math.sin(time * 3);
+        // Glow — breathing pulse, fades with lerp
+        if (isHovered && hoverTransition > 0.01) {
+          const p = 0.65 + 0.35 * Math.sin(time * 3);
           const grad = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, r * 4);
-          const ga = 0.35 * pulse;
+          const ga = 0.4 * hoverTransition * p;
           grad.addColorStop(0, isDark ? `rgba(100,215,255,${ga})` : `rgba(0,160,230,${ga * 0.75})`);
           grad.addColorStop(1, "rgba(0,0,0,0)");
           ctx.fillStyle = grad;
@@ -185,18 +196,22 @@ export default function GraphPage() {
           ctx.fill();
         }
 
-        const fillH = isHovered ? (isDark ? 62 : 55) : (isDark ? 30 + ratio * 25 : 35 + ratio * 20);
-        const fillS = isHovered ? (isDark ? 80 : 70) : (isDark ? 35 + ratio * 25 : 30 + ratio * 20);
+        const normalH = isDark ? 30 + ratio * 20 : 35 + ratio * 15;
+        const hoverH = isDark ? 68 : 62;
+        const fillH = isHovered ? normalH + (hoverH - normalH) * hoverTransition : normalH;
+        const normalS = isDark ? 35 + ratio * 20 : 30 + ratio * 15;
+        const hoverS = isDark ? 85 : 75;
+        const fillS = isHovered ? normalS + (hoverS - normalS) * hoverTransition : normalS;
         ctx.beginPath();
         ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
         ctx.fillStyle = `hsl(${hue}, ${fillS}%, ${fillH}%)`;
         ctx.fill();
 
-        // Label
-        if (!isDimmed || true) {
+        // Label — fades in/out
+        if (!isDimmed || hoverTransition > 0.15) {
           const labelSize = Math.max(9, 9 + ratio * 5);
           ctx.fillStyle = isHovered
-            ? (isDark ? `rgba(100,215,255,${0.8 + 0.2 * Math.sin(time * 3 + 0.5)})` : "rgba(0,160,230,0.9)")
+            ? (isDark ? `rgba(100,215,255,${0.4 + hoverTransition * 0.6 + 0.1 * Math.sin(time * 3 + 0.5)})` : "rgba(0,160,230,0.85)")
             : textColor;
           ctx.font = `${labelSize}px sans-serif`;
           ctx.textAlign = "center";
@@ -258,6 +273,7 @@ export default function GraphPage() {
       mouse.y = e.offsetY;
       if (!draggingRef.current) {
         const hit = hitTest(e.offsetX, e.offsetY);
+        if (hoveredNodeId && !hit) fadeOutNodeId = hoveredNodeId;
         hoveredNodeId = hit ? hit.id : null;
         canvas.style.cursor = hit ? "pointer" : "grab";
         return;
@@ -273,6 +289,7 @@ export default function GraphPage() {
     };
 
     const mouseleave = () => {
+      if (hoveredNodeId) fadeOutNodeId = hoveredNodeId;
       hoveredNodeId = null;
       rippleActive = false;
       mouse.x = -1e5;
