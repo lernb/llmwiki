@@ -212,16 +212,14 @@ export default function GraphPage() {
         ctx.fillStyle = `hsl(${hue}, ${fillS}%, ${fillH}%)`;
         ctx.fill();
 
-        // Label
-        if (!isDimmed || hoverTransition > 0.01) {
-          const labelSize = Math.max(9, 9 + ratio * 5);
-          ctx.fillStyle = isHovered
-            ? (isDark ? `rgba(230,235,240,${0.5 + hoverTransition * 0.5 + 0.08 * Math.sin(time * 3 + 0.5)})` : "rgba(60,70,90,0.85)")
-            : textColor;
-          ctx.font = `${labelSize}px sans-serif`;
-          ctx.textAlign = "center";
-          ctx.fillText(node.label, node.x, node.y + r + labelSize + 3);
-        }
+        // Label — always render; dimmed nodes are already at low globalAlpha
+        const labelSize = Math.max(9, 9 + ratio * 5);
+        ctx.fillStyle = isHovered
+          ? (isDark ? `rgba(230,235,240,${0.5 + hoverTransition * 0.5 + 0.08 * Math.sin(time * 3 + 0.5)})` : "rgba(60,70,90,0.85)")
+          : textColor;
+        ctx.font = `${labelSize}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.fillText(node.label, node.x, node.y + r + labelSize + 3);
         ctx.globalAlpha = 1;
       }
 
