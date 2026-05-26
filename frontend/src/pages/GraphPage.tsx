@@ -45,7 +45,6 @@ export default function GraphPage() {
     };
 
     let { W, H } = resizeCanvas();
-    const focalLength = 500;
 
     // Edge counts for sizing
     const edgeCount = new Map<string, number>();
@@ -65,144 +64,162 @@ export default function GraphPage() {
       adjacency.get(e.target)!.add(e.source);
     }
 
-    // 3D Fibonacci sphere positions (computed once)
-    const goldenRatio = (1 + Math.sqrt(5)) / 2;
-    const sphereNodes = graph.nodes.map((n, i) => {
-      const count = graph.nodes.length;
-      const theta = 2 * Math.PI * i / goldenRatio;
-      const phi = Math.acos(1 - 2 * (i + 0.5) / count);
+    // ─── 2D Force-directed layout ──────────────────────────────────
+    const cx = W / 2, cy = H / 2;
+    const layoutRadius = Math.min(W, H) * 0.38;
+
+    const rawNodes = graph.nodes.map((n, i) => {
+      const angle = (2 * Math.PI * i) / graph.nodes.length;
       return {
-        id: n.id,
-        label: n.label,
-        phi,
-        theta0: theta,
+        id: n.id, label: n.label,
+        x: cx + layoutRadius * Math.cos(angle),
+        y: cy + layoutRadius * Math.sin(angle),
+        vx: 0, vy: 0,
         edgeCount: edgeCount.get(n.id) || 0,
         maxEdge: maxEdges,
       };
     });
+    const rawMap = new Map(rawNodes.map(n => [n.id, n]));
 
-    // Animation state
+    const REP = 4000, ATTR = 0.002, DAMP = 0.9, CENTER = 0.003, ITER = 60;
+    for (let iter = 0; iter < ITER; iter++) {
+      for (let i = 0; i < rawNodes.length; i++) {
+        for (let j = i + 1; j < rawNodes.length; j++) {
+          const dx = rawNodes[j].x - rawNodes[i].x;
+          const dy = rawNodes[j].y - rawNodes[i].y;
+          const dist = Math.max(Math.sqrt(dx * dx + dy * dy), 10);
+          const force = REP / (dist * dist);
+          rawNodes[i].vx -= (dx / dist) * force;
+          rawNodes[i].vy -= (dy / dist) * force;
+          rawNodes[j].vx += (dx / dist) * force;
+          rawNodes[j].vy += (dy / dist) * force;
+        }
+      }
+      for (const edge of graph.edges) {
+        const s = rawMap.get(edge.source);
+        const t = rawMap.get(edge.target);
+        if (!s || !t) continue;
+        const dx = t.x - s.x, dy = t.y - s.y;
+        const dist = Math.max(Math.sqrt(dx * dx + dy * dy), 1);
+        const force = (dist - 120) * ATTR;
+        s.vx += (dx / dist) * force; s.vy += (dy / dist) * force;
+        t.vx -= (dx / dist) * force; t.vy -= (dy / dist) * force;
+      }
+      for (const n of rawNodes) {
+        n.vx += (cx - n.x) * CENTER;
+        n.vy += (cy - n.y) * CENTER;
+        n.vx *= DAMP; n.vy *= DAMP;
+        n.x += n.vx; n.y += n.vy;
+      }
+    }
+
+    const homeNodes = rawNodes.map(n => ({
+      id: n.id, label: n.label,
+      homeX: n.x, homeY: n.y,
+      edgeCount: n.edgeCount, maxEdge: n.maxEdge,
+      phaseX: Math.random() * Math.PI * 2,
+      phaseY: Math.random() * Math.PI * 2,
+      freqX: 0.4 + Math.random() * 0.6,
+      freqY: 0.3 + Math.random() * 0.7,
+    }));
+
+    // ─── Animation state ──────────────────────────────────────────
     let animFrameId: number;
-    let rotation = 0;
     let time = 0;
-    const ROTATION_SPEED = 0.0008;
-
-    // Mouse tracking
+    const FLOAT_AMP = 3;
     const mouse = { x: -1e5, y: -1e5 };
     let hoveredNodeId: string | null = null;
-    let projectedNodes: Array<any> = [];
-
+    let screenNodes: Array<any> = [];
     const view = viewRef.current;
 
-    const draw = () => {
-      const centerX = W / 2;
-      const centerY = H / 2;
-      const sphereRadius = Math.min(W, H) * 0.38;
+    // Ripple state
+    const rippleCenter = { x: 0, y: 0 };
+    let rippleActive = false;
 
+    // ─── Draw ─────────────────────────────────────────────────────
+    const draw = () => {
       time += 0.016;
 
-      // Project 3D → 2D with perspective
-      projectedNodes = sphereNodes.map((n) => {
-        const theta = n.theta0 + rotation;
-        const x3d = sphereRadius * Math.sin(n.phi) * Math.cos(theta);
-        const y3d = sphereRadius * Math.cos(n.phi);
-        const z3d = sphereRadius * Math.sin(n.phi) * Math.sin(theta);
-        const p = focalLength / (focalLength + z3d);
-        return {
-          id: n.id,
-          label: n.label,
-          screenX: centerX + x3d * p,
-          screenY: centerY + y3d * p,
-          scale: p, z: z3d,
-          edgeCount: n.edgeCount,
-          maxEdge: n.maxEdge,
-          theta0: n.theta0,
-        };
-      });
+      // Floating offset from home positions
+      screenNodes = homeNodes.map(n => ({
+        id: n.id, label: n.label,
+        x: n.homeX + FLOAT_AMP * Math.sin(time * n.freqX + n.phaseX),
+        y: n.homeY + FLOAT_AMP * Math.sin(time * n.freqY + n.phaseY),
+        edgeCount: n.edgeCount, maxEdge: n.maxEdge,
+      }));
 
-      // Z-sort for depth rendering (far → near)
-      projectedNodes.sort((a, b) => a.z - b.z);
+      // Ripple displacement
+      if (rippleActive) {
+        for (const node of screenNodes) {
+          const dx = node.x - rippleCenter.x;
+          const dy = node.y - rippleCenter.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 2) continue;
+          const wave = Math.sin(dist * 0.06 - time * 5) * 5 * Math.exp(-dist * 0.008);
+          node.x += (dx / dist) * wave;
+          node.y += (dy / dist) * wave;
+        }
+      }
 
-      const isDark = document.documentElement.getAttribute("data-theme") !== "light";
-      const textColor = cssVar("--text-primary");
-
-      // Highlight set
+      // Highlight sets
       const hlNodes = new Set<string>();
       const hlEdges = new Set<string>();
       if (hoveredNodeId) {
         hlNodes.add(hoveredNodeId);
         const connected = adjacency.get(hoveredNodeId);
-        if (connected) {
-          for (const nid of connected) hlNodes.add(nid);
-        }
+        if (connected) for (const nid of connected) hlNodes.add(nid);
         for (const e of graph.edges) {
-          if (e.source === hoveredNodeId || e.target === hoveredNodeId) {
+          if (e.source === hoveredNodeId || e.target === hoveredNodeId)
             hlEdges.add(`${e.source}|${e.target}`);
-          }
         }
       }
 
-      // Cursor proximity push
-      const mgx = (mouse.x - view.offsetX) / view.scale;
-      const mgy = (mouse.y - view.offsetY) / view.scale;
-      const pushR = 60;
-      for (const node of projectedNodes) {
-        const dx = node.screenX - mgx;
-        const dy = node.screenY - mgy;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < pushR && dist > 0.1) {
-          const force = ((pushR - dist) / pushR) * 5;
-          node.screenX += (dx / dist) * force;
-          node.screenY += (dy / dist) * force;
-        }
-      }
+      const isDark = document.documentElement.getAttribute("data-theme") !== "light";
+      const textColor = cssVar("--text-primary");
 
-      // ─── Draw edges ──────────────────────────────────────────
       ctx.clearRect(0, 0, W, H);
       ctx.save();
       ctx.translate(view.offsetX, view.offsetY);
       ctx.scale(view.scale, view.scale);
 
+      // ─── Draw edges ──────────────────────────────────────────
       for (const edge of graph.edges) {
-        const s = projectedNodes.find((n) => n.id === edge.source);
-        const t = projectedNodes.find((n) => n.id === edge.target);
+        const s = screenNodes.find(n => n.id === edge.source);
+        const t = screenNodes.find(n => n.id === edge.target);
         if (!s || !t) continue;
 
         const isHL = hlEdges.has(`${edge.source}|${edge.target}`) || hlEdges.has(`${edge.target}|${edge.source}`);
 
         if (hoveredNodeId && !isHL) {
-          const dim = Math.max(0, (s.z + sphereRadius) / (2 * sphereRadius));
-          ctx.strokeStyle = isDark ? `rgba(100,120,140,${dim * 0.06})` : `rgba(80,100,120,${dim * 0.06})`;
-          ctx.lineWidth = 0.3;
+          ctx.strokeStyle = isDark ? "rgba(100,120,140,0.08)" : "rgba(80,100,120,0.08)";
+          ctx.lineWidth = 0.5;
         } else if (isHL) {
           ctx.strokeStyle = isDark ? "#4fc3f7" : "#0288d1";
           ctx.lineWidth = 2;
         } else {
-          const depth = ((s.z + t.z) / 2 + sphereRadius) / (2 * sphereRadius);
-          const alpha = Math.max(0.1, 0.4 + 0.4 * depth);
-          ctx.strokeStyle = isDark ? `rgba(136,153,187,${alpha * 0.5})` : `rgba(102,119,136,${alpha * 0.4})`;
-          ctx.lineWidth = Math.max(0.4, 0.8 * (s.scale + t.scale) / 2);
+          ctx.strokeStyle = isDark ? "rgba(136,153,187,0.25)" : "rgba(102,119,136,0.2)";
+          ctx.lineWidth = 0.6;
         }
         ctx.beginPath();
-        ctx.moveTo(s.screenX, s.screenY);
-        ctx.lineTo(t.screenX, t.screenY);
+        ctx.moveTo(s.x, s.y);
+        ctx.lineTo(t.x, t.y);
         ctx.stroke();
       }
 
       // ─── Draw nodes ──────────────────────────────────────────
-      for (const node of projectedNodes) {
+      for (const node of screenNodes) {
         const isHovered = node.id === hoveredNodeId;
         const isConnected = hlNodes.has(node.id) && !isHovered;
         const isDimmed = hoveredNodeId && !isHovered && !isConnected;
 
         const ratio = node.edgeCount / node.maxEdge;
         const baseR = Math.max(3, 2 + ratio * 20);
-        const pulse = 1 + 0.08 * Math.sin(time * 2 + node.theta0);
+        const pulse = 1 + 0.06 * Math.sin(time * 2 + (homeNodes.find(h => h.id === node.id)?.phaseX ?? 0));
 
         let r: number;
         if (isHovered) r = baseR * 2.2 * pulse;
-        else if (isConnected) r = baseR * 1.4 * pulse;
-        else r = baseR * pulse * node.scale;
+        else if (isConnected) r = baseR * 1.3 * pulse;
+        else r = baseR * pulse;
 
         let hue: number;
         if (ratio < 0.15) hue = 40;
@@ -210,40 +227,37 @@ export default function GraphPage() {
         else if (ratio < 0.7) hue = 190;
         else hue = 220;
 
-        if (isDimmed) ctx.globalAlpha = 0.15;
-        else if (isHovered) ctx.globalAlpha = 1;
-        else ctx.globalAlpha = 0.6 + 0.4 * node.scale;
+        ctx.globalAlpha = isDimmed ? 0.15 : (isHovered ? 1 : 0.7);
 
         // Glow for hovered node
         if (isHovered) {
-          const grad = ctx.createRadialGradient(node.screenX, node.screenY, 0, node.screenX, node.screenY, r * 4);
+          const grad = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, r * 3);
           grad.addColorStop(0, isDark ? "rgba(79,195,247,0.25)" : "rgba(2,136,209,0.2)");
           grad.addColorStop(1, "rgba(0,0,0,0)");
           ctx.fillStyle = grad;
           ctx.beginPath();
-          ctx.arc(node.screenX, node.screenY, r * 4, 0, Math.PI * 2);
+          ctx.arc(node.x, node.y, r * 3, 0, Math.PI * 2);
           ctx.fill();
         }
 
         const fillH = isHovered ? (isDark ? 65 : 55) : 35 + ratio * (isDark ? 25 : 5);
         const fillS = isDark ? 50 + ratio * 30 : 45 + ratio * 20;
         ctx.beginPath();
-        ctx.arc(node.screenX, node.screenY, r, 0, Math.PI * 2);
+        ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
         ctx.fillStyle = `hsl(${hue}, ${fillS}%, ${fillH}%)`;
         ctx.fill();
         ctx.strokeStyle = isHovered ? (isDark ? "#4fc3f7" : "#0288d1") : (isDark ? "#667788" : "#445566");
-        ctx.lineWidth = isHovered ? 2.5 : Math.max(0.5, 1 * node.scale);
+        ctx.lineWidth = isHovered ? 2.5 : Math.max(0.5, 1);
         ctx.stroke();
 
         // Label
         if (!isDimmed || isHovered) {
-          const labelSize = Math.max(9, 9 + ratio * 5) * (isHovered ? 1.3 : node.scale);
+          const labelSize = Math.max(9, 9 + ratio * 5) * (isHovered ? 1.2 : 1);
           ctx.fillStyle = isHovered ? (isDark ? "#4fc3f7" : "#01579b") : textColor;
           ctx.font = `${labelSize}px sans-serif`;
           ctx.textAlign = "center";
-          ctx.fillText(node.label, node.screenX, node.screenY + r + labelSize + 3);
+          ctx.fillText(node.label, node.x, node.y + r + labelSize + 3);
         }
-
         ctx.globalAlpha = 1;
       }
 
@@ -252,7 +266,6 @@ export default function GraphPage() {
 
     // ─── Animation loop ─────────────────────────────────────────
     const animate = () => {
-      if (!hoveredNodeId) rotation += ROTATION_SPEED;
       draw();
       animFrameId = requestAnimationFrame(animate);
     };
@@ -269,11 +282,11 @@ export default function GraphPage() {
     const hitTest = (sx: number, sy: number) => {
       const gx = (sx - view.offsetX) / view.scale;
       const gy = (sy - view.offsetY) / view.scale;
-      for (let i = projectedNodes.length - 1; i >= 0; i--) {
-        const n = projectedNodes[i];
-        const dx = gx - n.screenX, dy = gy - n.screenY;
-        const hitR = Math.max(6, (2 + (n.edgeCount / n.maxEdge) * 20) * 1.5);
-        if (dx * dx + dy * dy < hitR * hitR) return n;
+      for (let i = screenNodes.length - 1; i >= 0; i--) {
+        const n = screenNodes[i];
+        const dx = gx - n.x, dy = gy - n.y;
+        const r = Math.max(6, (2 + (n.edgeCount / n.maxEdge) * 20) * 1.5);
+        if (dx * dx + dy * dy < r * r) return n;
       }
       return null;
     };
@@ -309,13 +322,20 @@ export default function GraphPage() {
       view.offsetY = dragStartViewRef.current.y + e.offsetY - dragStartRef.current.y;
     };
 
-    const mouseup = () => { draggingRef.current = false; canvas.style.cursor = "grab"; };
+    const mouseenter = () => {
+      rippleActive = true;
+      rippleCenter.x = (mouse.x - view.offsetX) / view.scale;
+      rippleCenter.y = (mouse.y - view.offsetY) / view.scale;
+    };
 
     const mouseleave = () => {
       hoveredNodeId = null;
+      rippleActive = false;
       mouse.x = -1e5;
       mouse.y = -1e5;
     };
+
+    const mouseup = () => { draggingRef.current = false; canvas.style.cursor = "grab"; };
 
     const click = (e: MouseEvent) => {
       if (Math.abs(e.offsetX - dragStartRef.current.x) > 5 || Math.abs(e.offsetY - dragStartRef.current.y) > 5) return;
@@ -333,8 +353,9 @@ export default function GraphPage() {
     canvas.addEventListener("wheel", wheel, { passive: false });
     canvas.addEventListener("mousedown", mousedown);
     canvas.addEventListener("mousemove", mousemove);
-    canvas.addEventListener("mouseup", mouseup);
+    canvas.addEventListener("mouseenter", mouseenter);
     canvas.addEventListener("mouseleave", mouseleave);
+    canvas.addEventListener("mouseup", mouseup);
     canvas.addEventListener("click", click);
     canvas.addEventListener("dblclick", dblclick);
     window.addEventListener("resize", resize);
@@ -345,8 +366,9 @@ export default function GraphPage() {
       canvas.removeEventListener("wheel", wheel);
       canvas.removeEventListener("mousedown", mousedown);
       canvas.removeEventListener("mousemove", mousemove);
-      canvas.removeEventListener("mouseup", mouseup);
+      canvas.removeEventListener("mouseenter", mouseenter);
       canvas.removeEventListener("mouseleave", mouseleave);
+      canvas.removeEventListener("mouseup", mouseup);
       canvas.removeEventListener("click", click);
       canvas.removeEventListener("dblclick", dblclick);
       window.removeEventListener("resize", resize);
