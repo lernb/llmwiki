@@ -162,13 +162,14 @@ export default function GraphPage() {
 
         const tV = hoverTransition;
         if (showingId && !isHL) {
-          ctx.strokeStyle = isDark ? "rgba(120,140,170,0.02)" : "rgba(100,120,140,0.035)";
-          ctx.lineWidth = 0.3;
+          const dimA = Math.max(0.02, 0.12 - tV * 0.1);
+          ctx.strokeStyle = isDark ? `rgba(120,140,170,${dimA})` : `rgba(100,120,140,${dimA})`;
+          ctx.lineWidth = Math.max(0.3, 0.4 - tV * 0.1);
         } else if (isHL) {
-          const a = 0.1 + tV * 0.25;
+          const a = Math.min(0.35, 0.12 + tV * 0.23);
           const pulse = 0.9 + 0.1 * Math.sin(time * 4);
           ctx.strokeStyle = isDark ? `rgba(210,220,230,${a * pulse})` : `rgba(80,100,130,${a * pulse})`;
-          ctx.lineWidth = 0.5 + tV * 0.6;
+          ctx.lineWidth = 0.4 + tV * 0.7;
         } else {
           ctx.strokeStyle = isDark ? "rgba(136,153,187,0.12)" : "rgba(102,119,136,0.13)";
           ctx.lineWidth = 0.4;
@@ -193,9 +194,9 @@ export default function GraphPage() {
 
         const hue = 195;
 
-        if (isDimmed) ctx.globalAlpha = 0.08;
-        else if (isHovered) ctx.globalAlpha = 0.5 + hoverTransition * 0.5;
-        else if (isConnected) ctx.globalAlpha = 0.5 + hoverTransition * 0.35;
+        if (isDimmed) ctx.globalAlpha = 0.65 - hoverTransition * 0.57;
+        else if (isHovered) ctx.globalAlpha = 0.65 + hoverTransition * 0.35;
+        else if (isConnected) ctx.globalAlpha = 0.65 + hoverTransition * 0.2;
         else ctx.globalAlpha = 0.65;
 
         // White glow on hovered node only
@@ -219,8 +220,9 @@ export default function GraphPage() {
           : normalH;
         const normalS = isDark ? 35 + ratio * 20 : 30 + ratio * 15;
         const hoverS = isDark ? 90 : 80;
+        const connS = isDark ? 50 : 45;
         const fillS = isHovered ? normalS + (hoverS - normalS) * hoverTransition
-          : isConnected ? normalS + (10 - normalS) * hoverTransition
+          : isConnected ? normalS + (connS - normalS) * hoverTransition
           : normalS;
         ctx.beginPath();
         ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
@@ -228,7 +230,7 @@ export default function GraphPage() {
         ctx.fill();
 
         // Label
-        if (!isDimmed || hoverTransition > 0.15) {
+        if (!isDimmed || hoverTransition > 0.01) {
           const labelSize = Math.max(9, 9 + ratio * 5);
           ctx.fillStyle = isHovered
             ? (isDark ? `rgba(230,235,240,${0.5 + hoverTransition * 0.5 + 0.08 * Math.sin(time * 3 + 0.5)})` : "rgba(60,70,90,0.85)")
