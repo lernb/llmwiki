@@ -96,10 +96,6 @@ export default function GraphPage() {
     let screenNodes: Array<any> = [];
     const view = viewRef.current;
 
-    // Ripple state
-    const rippleCenter = { x: 0, y: 0 };
-    let rippleActive = false;
-
     // ─── Draw ─────────────────────────────────────────────────────
     const draw = () => {
       time += 0.016;
@@ -117,19 +113,6 @@ export default function GraphPage() {
         y: n.homeY + FLOAT_AMP * Math.sin(time * n.freqY + n.phaseY),
         edgeCount: n.edgeCount, maxEdge: n.maxEdge,
       }));
-
-      // Ripple displacement
-      if (rippleActive) {
-        for (const node of screenNodes) {
-          const dx = node.x - rippleCenter.x;
-          const dy = node.y - rippleCenter.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < 2) continue;
-          const wave = Math.sin(dist * 0.06 - time * 5) * 5 * Math.exp(-dist * 0.008);
-          node.x += (dx / dist) * wave;
-          node.y += (dy / dist) * wave;
-        }
-      }
 
       // Highlight sets — direct edges + connected nodes of the showing node
       const hlNodes = new Set<string>();
@@ -304,16 +287,9 @@ export default function GraphPage() {
       view.offsetY = dragStartViewRef.current.y + e.offsetY - dragStartRef.current.y;
     };
 
-    const mouseenter = () => {
-      rippleActive = true;
-      rippleCenter.x = (mouse.x - view.offsetX) / view.scale;
-      rippleCenter.y = (mouse.y - view.offsetY) / view.scale;
-    };
-
     const mouseleave = () => {
       if (hoveredNodeId) fadeOutNodeId = hoveredNodeId;
       hoveredNodeId = null;
-      rippleActive = false;
       mouse.x = -1e5;
       mouse.y = -1e5;
     };
@@ -336,7 +312,6 @@ export default function GraphPage() {
     canvas.addEventListener("wheel", wheel, { passive: false });
     canvas.addEventListener("mousedown", mousedown);
     canvas.addEventListener("mousemove", mousemove);
-    canvas.addEventListener("mouseenter", mouseenter);
     canvas.addEventListener("mouseleave", mouseleave);
     canvas.addEventListener("mouseup", mouseup);
     canvas.addEventListener("click", click);
@@ -349,7 +324,6 @@ export default function GraphPage() {
       canvas.removeEventListener("wheel", wheel);
       canvas.removeEventListener("mousedown", mousedown);
       canvas.removeEventListener("mousemove", mousemove);
-      canvas.removeEventListener("mouseenter", mouseenter);
       canvas.removeEventListener("mouseleave", mouseleave);
       canvas.removeEventListener("mouseup", mouseup);
       canvas.removeEventListener("click", click);
