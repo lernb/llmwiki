@@ -64,28 +64,71 @@ export default function GraphPage() {
       adjacency.get(e.target)!.add(e.source);
     }
 
-    // ─── Circular layout ──────────────────────────────────────────
+    // ─── Force-directed layout ─────────────────────────────────────
     const cx = W / 2, cy = H / 2;
     const layoutRadius = Math.min(W, H) * 0.38;
 
-    const homeNodes = graph.nodes.map((n, i) => {
-      const angle = (2 * Math.PI * i) / graph.nodes.length - Math.PI / 2;
+    // Random starting positions filling the circle
+    const rawNodes = graph.nodes.map((n) => {
+      const angle = Math.random() * Math.PI * 2;
+      const r = layoutRadius * Math.sqrt(Math.random());
       return {
         id: n.id, label: n.label,
-        homeX: cx + layoutRadius * Math.cos(angle),
-        homeY: cy + layoutRadius * Math.sin(angle),
+        x: cx + r * Math.cos(angle),
+        y: cy + r * Math.sin(angle),
+        vx: 0, vy: 0,
         edgeCount: edgeCount.get(n.id) || 0,
         maxEdge: maxEdges,
-        phaseX: Math.random() * Math.PI * 2,
-        phaseY: Math.random() * Math.PI * 2,
-        freqX: 0.4 + Math.random() * 0.6,
-        freqY: 0.3 + Math.random() * 0.7,
       };
     });
+    const rawMap = new Map(rawNodes.map((n) => [n.id, n]));
+
+    const REP = 3000, ATTR = 0.003, DAMP = 0.85, CENTER = 0.004, ITER = 80;
+    for (let iter = 0; iter < ITER; iter++) {
+      for (let i = 0; i < rawNodes.length; i++) {
+        for (let j = i + 1; j < rawNodes.length; j++) {
+          const dx = rawNodes[j].x - rawNodes[i].x;
+          const dy = rawNodes[j].y - rawNodes[i].y;
+          const dist = Math.max(Math.sqrt(dx * dx + dy * dy), 10);
+          const force = REP / (dist * dist);
+          rawNodes[i].vx -= (dx / dist) * force;
+          rawNodes[i].vy -= (dy / dist) * force;
+          rawNodes[j].vx += (dx / dist) * force;
+          rawNodes[j].vy += (dy / dist) * force;
+        }
+      }
+      for (const edge of graph.edges) {
+        const s = rawMap.get(edge.source);
+        const t = rawMap.get(edge.target);
+        if (!s || !t) continue;
+        const dx = t.x - s.x, dy = t.y - s.y;
+        const dist = Math.max(Math.sqrt(dx * dx + dy * dy), 1);
+        const force = (dist - 120) * ATTR;
+        s.vx += (dx / dist) * force; s.vy += (dy / dist) * force;
+        t.vx -= (dx / dist) * force; t.vy -= (dy / dist) * force;
+      }
+      for (const n of rawNodes) {
+        n.vx += (cx - n.x) * CENTER;
+        n.vy += (cy - n.y) * CENTER;
+        n.vx *= DAMP; n.vy *= DAMP;
+        n.x += n.vx; n.y += n.vy;
+      }
+    }
+
+    const homeNodes = rawNodes.map((n) => ({
+      id: n.id, label: n.label,
+      homeX: n.x, homeY: n.y,
+      edgeCount: n.edgeCount, maxEdge: n.maxEdge,
+      phaseX: Math.random() * Math.PI * 2,
+      phaseY: Math.random() * Math.PI * 2,
+      freqX: 0.4 + Math.random() * 0.6,
+      freqY: 0.3 + Math.random() * 0.7,
+    }));
 
     // ─── Animation state ──────────────────────────────────────────
     let animFrameId: number;
     let time = 0;
+    let hoverTransition = 0;
     const FLOAT_AMP = 3;
     const mouse = { x: -1e5, y: -1e5 };
     let hoveredNodeId: string | null = null;
@@ -99,6 +142,11 @@ export default function GraphPage() {
     // ─── Draw ─────────────────────────────────────────────────────
     const draw = () => {
       time += 0.016;
+
+      // Smooth hover transition
+      const targetT = hoveredNodeId ? 1 : 0;
+      hoverTransition += (targetT - hoverTransition) * 0.08;
+      const t = hoverTransition;
 
       // Floating offset from home positions
       screenNodes = homeNodes.map(n => ({
@@ -151,11 +199,13 @@ export default function GraphPage() {
         const isHL = hlEdges.has(`${edge.source}|${edge.target}`) || hlEdges.has(`${edge.target}|${edge.source}`);
 
         if (hoveredNodeId && !isHL) {
-          ctx.strokeStyle = isDark ? "rgba(100,120,140,0.08)" : "rgba(80,100,120,0.08)";
+          const dim = Math.max(0.08, 1 - t * 0.9);
+          ctx.strokeStyle = isDark ? `rgba(100,120,140,${dim * 0.3})` : `rgba(80,100,120,${dim * 0.3})`;
           ctx.lineWidth = 0.5;
         } else if (isHL) {
-          ctx.strokeStyle = isDark ? "#4fc3f7" : "#0288d1";
-          ctx.lineWidth = 2;
+          const a = 0.3 + t * 0.7;
+          ctx.strokeStyle = isDark ? `rgba(79,195,247,${a})` : `rgba(2,136,209,${a})`;
+          ctx.lineWidth = 0.6 + t * 1.4;
         } else {
           ctx.strokeStyle = isDark ? "rgba(136,153,187,0.25)" : "rgba(102,119,136,0.2)";
           ctx.lineWidth = 0.6;
@@ -175,7 +225,6 @@ export default function GraphPage() {
         const ratio = node.edgeCount / node.maxEdge;
         const baseR = Math.max(3, 2 + ratio * 20);
         const pulse = 1 + 0.06 * Math.sin(time * 2 + (homeNodes.find(h => h.id === node.id)?.phaseX ?? 0));
-
         const r = baseR * pulse;
 
         let hue: number;
@@ -184,12 +233,16 @@ export default function GraphPage() {
         else if (ratio < 0.7) hue = 190;
         else hue = 220;
 
-        ctx.globalAlpha = isDimmed ? 0.15 : (isHovered ? 1 : 0.7);
+        // Alpha: smooth dim when hovering elsewhere
+        if (isDimmed) ctx.globalAlpha = 1 - t * 0.85;
+        else if (isHovered) ctx.globalAlpha = 0.7 + t * 0.3;
+        else ctx.globalAlpha = 0.7;
 
-        // Glow for hovered node
-        if (isHovered) {
+        // Glow — fades in/out smoothly
+        if (isHovered && t > 0.01) {
           const grad = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, r * 3);
-          grad.addColorStop(0, isDark ? "rgba(79,195,247,0.25)" : "rgba(2,136,209,0.2)");
+          const ga = 0.25 * t;
+          grad.addColorStop(0, isDark ? `rgba(79,195,247,${ga})` : `rgba(2,136,209,${ga * 0.8})`);
           grad.addColorStop(1, "rgba(0,0,0,0)");
           ctx.fillStyle = grad;
           ctx.beginPath();
@@ -197,20 +250,28 @@ export default function GraphPage() {
           ctx.fill();
         }
 
-        const fillH = isHovered ? (isDark ? 65 : 55) : 35 + ratio * (isDark ? 25 : 5);
+        const darkFill = 35 + ratio * 25;
+        const lightFill = 35 + ratio * 5;
+        const normalH = isDark ? darkFill : lightFill;
+        const hoverH = isDark ? 65 : 55;
+        const fillH = isHovered ? normalH + (hoverH - normalH) * t : normalH;
         const fillS = isDark ? 50 + ratio * 30 : 45 + ratio * 20;
         ctx.beginPath();
         ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
         ctx.fillStyle = `hsl(${hue}, ${fillS}%, ${fillH}%)`;
         ctx.fill();
-        ctx.strokeStyle = isHovered ? (isDark ? "#4fc3f7" : "#0288d1") : (isDark ? "#667788" : "#445566");
-        ctx.lineWidth = isHovered ? 2.5 : Math.max(0.5, 1);
+        ctx.strokeStyle = isHovered
+          ? (isDark ? `rgba(79,195,247,${0.4 + t * 0.6})` : `rgba(2,136,209,${0.5 + t * 0.5})`)
+          : (isDark ? "#667788" : "#445566");
+        ctx.lineWidth = isHovered ? 0.8 + t * 1.7 : Math.max(0.5, 1);
         ctx.stroke();
 
-        // Label
-        if (!isDimmed || isHovered) {
+        // Label — smooth color transition
+        if (!isDimmed || t > 0.3) {
           const labelSize = Math.max(9, 9 + ratio * 5);
-          ctx.fillStyle = isHovered ? (isDark ? "#4fc3f7" : "#01579b") : textColor;
+          ctx.fillStyle = isHovered
+            ? (isDark ? `rgba(79,195,247,${0.6 + t * 0.4})` : `rgba(2,136,209,${0.7 + t * 0.3})`)
+            : textColor;
           ctx.font = `${labelSize}px sans-serif`;
           ctx.textAlign = "center";
           ctx.fillText(node.label, node.x, node.y + r + labelSize + 3);
