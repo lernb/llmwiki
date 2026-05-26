@@ -55,80 +55,30 @@ export default function GraphPage() {
     }
     const maxEdges = Math.max(...Array.from(edgeCount.values()), 1);
 
-    // Adjacency map for highlight
-    const adjacency = new Map<string, Set<string>>();
-    for (const e of graph.edges) {
-      if (!adjacency.has(e.source)) adjacency.set(e.source, new Set());
-      if (!adjacency.has(e.target)) adjacency.set(e.target, new Set());
-      adjacency.get(e.source)!.add(e.target);
-      adjacency.get(e.target)!.add(e.source);
-    }
-
-    // ─── Force-directed layout ─────────────────────────────────────
+    // ─── Vogel spiral layout (evenly fills the circle) ──────────────
     const cx = W / 2, cy = H / 2;
-    const layoutRadius = Math.min(W, H) * 0.38;
+    const layoutRadius = Math.min(W, H) * 0.40;
 
-    // Random starting positions filling the circle
-    const rawNodes = graph.nodes.map((n) => {
-      const angle = Math.random() * Math.PI * 2;
-      const r = layoutRadius * Math.sqrt(Math.random());
+    const homeNodes = graph.nodes.map((n, i) => {
+      const idx = i + 1;
+      const r = layoutRadius * Math.sqrt(idx / graph.nodes.length);
+      const theta = idx * 2.39996;
       return {
         id: n.id, label: n.label,
-        x: cx + r * Math.cos(angle),
-        y: cy + r * Math.sin(angle),
-        vx: 0, vy: 0,
+        homeX: cx + r * Math.cos(theta),
+        homeY: cy + r * Math.sin(theta),
         edgeCount: edgeCount.get(n.id) || 0,
         maxEdge: maxEdges,
+        phaseX: Math.random() * Math.PI * 2,
+        phaseY: Math.random() * Math.PI * 2,
+        freqX: 0.4 + Math.random() * 0.6,
+        freqY: 0.3 + Math.random() * 0.7,
       };
     });
-    const rawMap = new Map(rawNodes.map((n) => [n.id, n]));
-
-    const REP = 3000, ATTR = 0.003, DAMP = 0.85, CENTER = 0.004, ITER = 80;
-    for (let iter = 0; iter < ITER; iter++) {
-      for (let i = 0; i < rawNodes.length; i++) {
-        for (let j = i + 1; j < rawNodes.length; j++) {
-          const dx = rawNodes[j].x - rawNodes[i].x;
-          const dy = rawNodes[j].y - rawNodes[i].y;
-          const dist = Math.max(Math.sqrt(dx * dx + dy * dy), 10);
-          const force = REP / (dist * dist);
-          rawNodes[i].vx -= (dx / dist) * force;
-          rawNodes[i].vy -= (dy / dist) * force;
-          rawNodes[j].vx += (dx / dist) * force;
-          rawNodes[j].vy += (dy / dist) * force;
-        }
-      }
-      for (const edge of graph.edges) {
-        const s = rawMap.get(edge.source);
-        const t = rawMap.get(edge.target);
-        if (!s || !t) continue;
-        const dx = t.x - s.x, dy = t.y - s.y;
-        const dist = Math.max(Math.sqrt(dx * dx + dy * dy), 1);
-        const force = (dist - 120) * ATTR;
-        s.vx += (dx / dist) * force; s.vy += (dy / dist) * force;
-        t.vx -= (dx / dist) * force; t.vy -= (dy / dist) * force;
-      }
-      for (const n of rawNodes) {
-        n.vx += (cx - n.x) * CENTER;
-        n.vy += (cy - n.y) * CENTER;
-        n.vx *= DAMP; n.vy *= DAMP;
-        n.x += n.vx; n.y += n.vy;
-      }
-    }
-
-    const homeNodes = rawNodes.map((n) => ({
-      id: n.id, label: n.label,
-      homeX: n.x, homeY: n.y,
-      edgeCount: n.edgeCount, maxEdge: n.maxEdge,
-      phaseX: Math.random() * Math.PI * 2,
-      phaseY: Math.random() * Math.PI * 2,
-      freqX: 0.4 + Math.random() * 0.6,
-      freqY: 0.3 + Math.random() * 0.7,
-    }));
 
     // ─── Animation state ──────────────────────────────────────────
     let animFrameId: number;
     let time = 0;
-    let hoverTransition = 0;
     const FLOAT_AMP = 3;
     const mouse = { x: -1e5, y: -1e5 };
     let hoveredNodeId: string | null = null;
@@ -142,11 +92,6 @@ export default function GraphPage() {
     // ─── Draw ─────────────────────────────────────────────────────
     const draw = () => {
       time += 0.016;
-
-      // Smooth hover transition
-      const targetT = hoveredNodeId ? 1 : 0;
-      hoverTransition += (targetT - hoverTransition) * 0.08;
-      const t = hoverTransition;
 
       // Floating offset from home positions
       screenNodes = homeNodes.map(n => ({
@@ -169,13 +114,9 @@ export default function GraphPage() {
         }
       }
 
-      // Highlight sets
-      const hlNodes = new Set<string>();
+      // Highlight sets — only direct edges of the hovered node
       const hlEdges = new Set<string>();
       if (hoveredNodeId) {
-        hlNodes.add(hoveredNodeId);
-        const connected = adjacency.get(hoveredNodeId);
-        if (connected) for (const nid of connected) hlNodes.add(nid);
         for (const e of graph.edges) {
           if (e.source === hoveredNodeId || e.target === hoveredNodeId)
             hlEdges.add(`${e.source}|${e.target}`);
@@ -199,16 +140,15 @@ export default function GraphPage() {
         const isHL = hlEdges.has(`${edge.source}|${edge.target}`) || hlEdges.has(`${edge.target}|${edge.source}`);
 
         if (hoveredNodeId && !isHL) {
-          const dim = Math.max(0.08, 1 - t * 0.9);
-          ctx.strokeStyle = isDark ? `rgba(100,120,140,${dim * 0.3})` : `rgba(80,100,120,${dim * 0.3})`;
-          ctx.lineWidth = 0.5;
+          ctx.strokeStyle = isDark ? "rgba(120,140,170,0.02)" : "rgba(100,120,140,0.035)";
+          ctx.lineWidth = 0.3;
         } else if (isHL) {
-          const a = 0.3 + t * 0.7;
-          ctx.strokeStyle = isDark ? `rgba(79,195,247,${a})` : `rgba(2,136,209,${a})`;
-          ctx.lineWidth = 0.6 + t * 1.4;
+          const pulse = 0.75 + 0.25 * Math.sin(time * 4);
+          ctx.strokeStyle = isDark ? `rgba(100,215,255,${pulse})` : `rgba(0,150,220,${pulse})`;
+          ctx.lineWidth = 0.8 + 0.4 * Math.sin(time * 4);
         } else {
-          ctx.strokeStyle = isDark ? "rgba(136,153,187,0.25)" : "rgba(102,119,136,0.2)";
-          ctx.lineWidth = 0.6;
+          ctx.strokeStyle = isDark ? "rgba(136,153,187,0.12)" : "rgba(102,119,136,0.13)";
+          ctx.lineWidth = 0.4;
         }
         ctx.beginPath();
         ctx.moveTo(s.x, s.y);
@@ -219,58 +159,44 @@ export default function GraphPage() {
       // ─── Draw nodes ──────────────────────────────────────────
       for (const node of screenNodes) {
         const isHovered = node.id === hoveredNodeId;
-        const isConnected = hlNodes.has(node.id) && !isHovered;
-        const isDimmed = hoveredNodeId && !isHovered && !isConnected;
+        const isDimmed = hoveredNodeId && !isHovered;
 
         const ratio = node.edgeCount / node.maxEdge;
         const baseR = Math.max(3, 2 + ratio * 20);
         const pulse = 1 + 0.06 * Math.sin(time * 2 + (homeNodes.find(h => h.id === node.id)?.phaseX ?? 0));
         const r = baseR * pulse;
 
-        let hue: number;
-        if (ratio < 0.15) hue = 40;
-        else if (ratio < 0.4) hue = 140;
-        else if (ratio < 0.7) hue = 190;
-        else hue = 220;
+        const hue = 195;
 
-        // Alpha: smooth dim when hovering elsewhere
-        if (isDimmed) ctx.globalAlpha = 1 - t * 0.85;
-        else if (isHovered) ctx.globalAlpha = 0.7 + t * 0.3;
-        else ctx.globalAlpha = 0.7;
+        if (isDimmed) ctx.globalAlpha = 0.1;
+        else if (isHovered) ctx.globalAlpha = 1;
+        else ctx.globalAlpha = 0.65;
 
-        // Glow — fades in/out smoothly
-        if (isHovered && t > 0.01) {
-          const grad = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, r * 3);
-          const ga = 0.25 * t;
-          grad.addColorStop(0, isDark ? `rgba(79,195,247,${ga})` : `rgba(2,136,209,${ga * 0.8})`);
+        // Glow — breathing pulse
+        if (isHovered) {
+          const pulse = 0.65 + 0.35 * Math.sin(time * 3);
+          const grad = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, r * 4);
+          const ga = 0.35 * pulse;
+          grad.addColorStop(0, isDark ? `rgba(100,215,255,${ga})` : `rgba(0,160,230,${ga * 0.75})`);
           grad.addColorStop(1, "rgba(0,0,0,0)");
           ctx.fillStyle = grad;
           ctx.beginPath();
-          ctx.arc(node.x, node.y, r * 3, 0, Math.PI * 2);
+          ctx.arc(node.x, node.y, r * 4, 0, Math.PI * 2);
           ctx.fill();
         }
 
-        const darkFill = 35 + ratio * 25;
-        const lightFill = 35 + ratio * 5;
-        const normalH = isDark ? darkFill : lightFill;
-        const hoverH = isDark ? 65 : 55;
-        const fillH = isHovered ? normalH + (hoverH - normalH) * t : normalH;
-        const fillS = isDark ? 50 + ratio * 30 : 45 + ratio * 20;
+        const fillH = isHovered ? (isDark ? 62 : 55) : (isDark ? 30 + ratio * 25 : 35 + ratio * 20);
+        const fillS = isHovered ? (isDark ? 80 : 70) : (isDark ? 35 + ratio * 25 : 30 + ratio * 20);
         ctx.beginPath();
         ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
         ctx.fillStyle = `hsl(${hue}, ${fillS}%, ${fillH}%)`;
         ctx.fill();
-        ctx.strokeStyle = isHovered
-          ? (isDark ? `rgba(79,195,247,${0.4 + t * 0.6})` : `rgba(2,136,209,${0.5 + t * 0.5})`)
-          : (isDark ? "#667788" : "#445566");
-        ctx.lineWidth = isHovered ? 0.8 + t * 1.7 : Math.max(0.5, 1);
-        ctx.stroke();
 
-        // Label — smooth color transition
-        if (!isDimmed || t > 0.3) {
+        // Label
+        if (!isDimmed || true) {
           const labelSize = Math.max(9, 9 + ratio * 5);
           ctx.fillStyle = isHovered
-            ? (isDark ? `rgba(79,195,247,${0.6 + t * 0.4})` : `rgba(2,136,209,${0.7 + t * 0.3})`)
+            ? (isDark ? `rgba(100,215,255,${0.8 + 0.2 * Math.sin(time * 3 + 0.5)})` : "rgba(0,160,230,0.9)")
             : textColor;
           ctx.font = `${labelSize}px sans-serif`;
           ctx.textAlign = "center";
