@@ -64,64 +64,24 @@ export default function GraphPage() {
       adjacency.get(e.target)!.add(e.source);
     }
 
-    // ─── 2D Force-directed layout ──────────────────────────────────
+    // ─── Circular layout ──────────────────────────────────────────
     const cx = W / 2, cy = H / 2;
     const layoutRadius = Math.min(W, H) * 0.38;
 
-    const rawNodes = graph.nodes.map((n, i) => {
-      const angle = (2 * Math.PI * i) / graph.nodes.length;
+    const homeNodes = graph.nodes.map((n, i) => {
+      const angle = (2 * Math.PI * i) / graph.nodes.length - Math.PI / 2;
       return {
         id: n.id, label: n.label,
-        x: cx + layoutRadius * Math.cos(angle),
-        y: cy + layoutRadius * Math.sin(angle),
-        vx: 0, vy: 0,
+        homeX: cx + layoutRadius * Math.cos(angle),
+        homeY: cy + layoutRadius * Math.sin(angle),
         edgeCount: edgeCount.get(n.id) || 0,
         maxEdge: maxEdges,
+        phaseX: Math.random() * Math.PI * 2,
+        phaseY: Math.random() * Math.PI * 2,
+        freqX: 0.4 + Math.random() * 0.6,
+        freqY: 0.3 + Math.random() * 0.7,
       };
     });
-    const rawMap = new Map(rawNodes.map(n => [n.id, n]));
-
-    const REP = 4000, ATTR = 0.002, DAMP = 0.9, CENTER = 0.003, ITER = 60;
-    for (let iter = 0; iter < ITER; iter++) {
-      for (let i = 0; i < rawNodes.length; i++) {
-        for (let j = i + 1; j < rawNodes.length; j++) {
-          const dx = rawNodes[j].x - rawNodes[i].x;
-          const dy = rawNodes[j].y - rawNodes[i].y;
-          const dist = Math.max(Math.sqrt(dx * dx + dy * dy), 10);
-          const force = REP / (dist * dist);
-          rawNodes[i].vx -= (dx / dist) * force;
-          rawNodes[i].vy -= (dy / dist) * force;
-          rawNodes[j].vx += (dx / dist) * force;
-          rawNodes[j].vy += (dy / dist) * force;
-        }
-      }
-      for (const edge of graph.edges) {
-        const s = rawMap.get(edge.source);
-        const t = rawMap.get(edge.target);
-        if (!s || !t) continue;
-        const dx = t.x - s.x, dy = t.y - s.y;
-        const dist = Math.max(Math.sqrt(dx * dx + dy * dy), 1);
-        const force = (dist - 120) * ATTR;
-        s.vx += (dx / dist) * force; s.vy += (dy / dist) * force;
-        t.vx -= (dx / dist) * force; t.vy -= (dy / dist) * force;
-      }
-      for (const n of rawNodes) {
-        n.vx += (cx - n.x) * CENTER;
-        n.vy += (cy - n.y) * CENTER;
-        n.vx *= DAMP; n.vy *= DAMP;
-        n.x += n.vx; n.y += n.vy;
-      }
-    }
-
-    const homeNodes = rawNodes.map(n => ({
-      id: n.id, label: n.label,
-      homeX: n.x, homeY: n.y,
-      edgeCount: n.edgeCount, maxEdge: n.maxEdge,
-      phaseX: Math.random() * Math.PI * 2,
-      phaseY: Math.random() * Math.PI * 2,
-      freqX: 0.4 + Math.random() * 0.6,
-      freqY: 0.3 + Math.random() * 0.7,
-    }));
 
     // ─── Animation state ──────────────────────────────────────────
     let animFrameId: number;
@@ -216,10 +176,7 @@ export default function GraphPage() {
         const baseR = Math.max(3, 2 + ratio * 20);
         const pulse = 1 + 0.06 * Math.sin(time * 2 + (homeNodes.find(h => h.id === node.id)?.phaseX ?? 0));
 
-        let r: number;
-        if (isHovered) r = baseR * 2.2 * pulse;
-        else if (isConnected) r = baseR * 1.3 * pulse;
-        else r = baseR * pulse;
+        const r = baseR * pulse;
 
         let hue: number;
         if (ratio < 0.15) hue = 40;
@@ -252,7 +209,7 @@ export default function GraphPage() {
 
         // Label
         if (!isDimmed || isHovered) {
-          const labelSize = Math.max(9, 9 + ratio * 5) * (isHovered ? 1.2 : 1);
+          const labelSize = Math.max(9, 9 + ratio * 5);
           ctx.fillStyle = isHovered ? (isDark ? "#4fc3f7" : "#01579b") : textColor;
           ctx.font = `${labelSize}px sans-serif`;
           ctx.textAlign = "center";
