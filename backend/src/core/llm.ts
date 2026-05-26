@@ -31,7 +31,7 @@ const PRESETS: Record<string, { baseURL: string; model: string }> = {
   },
 };
 
-// ─── Client ─────────────────────────────────────────────────────────
+// ─── Client (for deepseek / openai) ──────────────────────────────────
 
 let client: OpenAI | null = null;
 
@@ -39,24 +39,8 @@ function getClient(): OpenAI {
   if (!client) {
     const preset = PRESETS[LLM_PROVIDER] || PRESETS.deepseek;
     const baseURL = LLM_BASE_URL || preset.baseURL;
-
-    if (LLM_PROVIDER === "local") {
-      client = new OpenAI({
-        apiKey: "sk-no-key-required",
-        baseURL,
-        fetch: (url, init) => {
-          if (init) {
-            const headers = new Headers(init.headers);
-            headers.delete("Authorization");
-            init = { ...init, headers };
-          }
-          return fetch(url, init);
-        },
-      });
-    } else {
-      const apiKey = LLM_API_KEY || "sk-no-key-required";
-      client = new OpenAI({ apiKey, baseURL });
-    }
+    const apiKey = LLM_API_KEY || "sk-no-key-required";
+    client = new OpenAI({ apiKey, baseURL });
   }
   return client;
 }
@@ -70,21 +54,47 @@ export interface ChatOptions {
 }
 
 /**
- * Send a chat completion request to the LLM.
- * Returns the full response text.
+ * Send a chat completion request — uses raw fetch for local provider
+ * to avoid sending unwanted Authorization headers.
  */
 export async function chat(
   messages: Array<{ role: "user" | "assistant" | "system"; content: string }>,
   options: ChatOptions = {}
 ): Promise<string> {
-  const c = getClient();
   const preset = PRESETS[LLM_PROVIDER] || PRESETS.deepseek;
+  const baseURL = LLM_BASE_URL || preset.baseURL;
   const model = options.model || LLM_MODEL || preset.model;
 
   const allMessages = options.system
     ? [{ role: "system" as const, content: options.system }, ...messages]
     : messages;
 
+  // Local provider — direct HTTP call, no auth header
+  if (LLM_PROVIDER === "local") {
+    const url = `${baseURL.replace(/\/+$/, "")}/chat/completions`;
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model,
+        messages: allMessages,
+        temperature: options.temperature ?? 0.3,
+        max_tokens: options.maxTokens ?? 4096,
+      }),
+      signal: options.signal,
+    });
+    if (!resp.ok) {
+      const body = await resp.text().catch(() => "");
+      throw new Error(`${resp.status} ${resp.statusText}${body ? ": " + body.slice(0, 200) : ""}`);
+    }
+    const data: any = await resp.json();
+    const text = data.choices?.[0]?.message?.content;
+    if (!text) throw new Error("LLM returned empty response");
+    return text;
+  }
+
+  // DeepSeek / OpenAI — use SDK
+  const c = getClient();
   const resp = await c.chat.completions.create({
     model,
     messages: allMessages,
@@ -104,6 +114,17 @@ export async function chat(
  */
 export async function checkConnection(): Promise<{ ok: boolean; message: string }> {
   try {
+    if (LLM_PROVIDER === "local") {
+      const preset = PRESETS.local;
+      const baseURL = LLM_BASE_URL || preset.baseURL;
+      const model = LLM_MODEL || preset.model;
+      const resp = await fetch(`${baseURL.replace(/\/+$/, "")}/models`, {
+        headers: { "Accept": "application/json" },
+      });
+      if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`);
+      return { ok: true, message: `已连接 local / ${model}` };
+    }
+
     const c = getClient();
     await c.models.list();
     const preset = PRESETS[LLM_PROVIDER] || PRESETS.deepseek;
