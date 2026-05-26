@@ -98,8 +98,8 @@ export default function GraphPage() {
       // Hover lerp transition with proper fade-out
       const showingId = hoveredNodeId || fadeOutNodeId;
       const targetT = hoveredNodeId ? 1 : 0;
-      hoverTransition += (targetT - hoverTransition) * 0.08;
-      if (hoverTransition < 0.001 && fadeOutNodeId) fadeOutNodeId = null;
+      hoverTransition += (targetT - hoverTransition) * 0.18;
+      if (hoverTransition < 0.01 && fadeOutNodeId) fadeOutNodeId = null;
 
       // Floating offset from home positions
       screenNodes = homeNodes.map(n => ({
@@ -154,7 +154,7 @@ export default function GraphPage() {
         } else if (isHL) {
           const a = 0.3 + tV * 0.7;
           const pulse = 0.8 + 0.2 * Math.sin(time * 4);
-          ctx.strokeStyle = isDark ? `rgba(100,215,255,${a * pulse})` : `rgba(0,150,220,${a * pulse})`;
+          ctx.strokeStyle = isDark ? `hsla(195,45%,55%,${a * pulse})` : `hsla(195,40%,48%,${a * pulse})`;
           ctx.lineWidth = 0.5 + tV * 1.2;
         } else {
           ctx.strokeStyle = isDark ? "rgba(136,153,187,0.12)" : "rgba(102,119,136,0.13)";
@@ -174,13 +174,13 @@ export default function GraphPage() {
         const ratio = node.edgeCount / node.maxEdge;
         const baseR = Math.max(3, 2 + ratio * 20);
         const pulse = 1 + 0.06 * Math.sin(time * 2 + (homeNodes.find(h => h.id === node.id)?.phaseX ?? 0));
-        const scale = isHovered ? 1 + hoverTransition * 0.35 : 1;
+        const scale = isHovered ? 1 + hoverTransition * 0.45 : 1;
         const r = baseR * pulse * scale;
 
         const hue = 195;
 
         if (isDimmed) ctx.globalAlpha = 0.08;
-        else if (isHovered) ctx.globalAlpha = 0.55 + hoverTransition * 0.45;
+        else if (isHovered) ctx.globalAlpha = 0.5 + hoverTransition * 0.5;
         else ctx.globalAlpha = 0.65;
 
         // Glow — breathing pulse, fades with lerp
@@ -188,7 +188,7 @@ export default function GraphPage() {
           const p = 0.65 + 0.35 * Math.sin(time * 3);
           const grad = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, r * 4);
           const ga = 0.4 * hoverTransition * p;
-          grad.addColorStop(0, isDark ? `rgba(100,215,255,${ga})` : `rgba(0,160,230,${ga * 0.75})`);
+          grad.addColorStop(0, isDark ? `hsla(195,70%,60%,${ga})` : `hsla(195,60%,55%,${ga * 0.7})`);
           grad.addColorStop(1, "rgba(0,0,0,0)");
           ctx.fillStyle = grad;
           ctx.beginPath();
@@ -197,10 +197,10 @@ export default function GraphPage() {
         }
 
         const normalH = isDark ? 30 + ratio * 20 : 35 + ratio * 15;
-        const hoverH = isDark ? 68 : 62;
+        const hoverH = isDark ? 72 : 65;
         const fillH = isHovered ? normalH + (hoverH - normalH) * hoverTransition : normalH;
         const normalS = isDark ? 35 + ratio * 20 : 30 + ratio * 15;
-        const hoverS = isDark ? 85 : 75;
+        const hoverS = isDark ? 90 : 80;
         const fillS = isHovered ? normalS + (hoverS - normalS) * hoverTransition : normalS;
         ctx.beginPath();
         ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
@@ -211,7 +211,7 @@ export default function GraphPage() {
         if (!isDimmed || hoverTransition > 0.15) {
           const labelSize = Math.max(9, 9 + ratio * 5);
           ctx.fillStyle = isHovered
-            ? (isDark ? `rgba(100,215,255,${0.4 + hoverTransition * 0.6 + 0.1 * Math.sin(time * 3 + 0.5)})` : "rgba(0,160,230,0.85)")
+            ? (isDark ? `hsla(195,50%,55%,${0.4 + hoverTransition * 0.6 + 0.1 * Math.sin(time * 3 + 0.5)})` : "hsla(195,45%,50%,0.85)")
             : textColor;
           ctx.font = `${labelSize}px sans-serif`;
           ctx.textAlign = "center";
