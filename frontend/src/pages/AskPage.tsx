@@ -2,12 +2,24 @@ import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Link } from "react-router-dom";
-import { queryWiki } from "../api/client";
+import { queryWiki, putPage } from "../api/client";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
   sources?: string[];
+}
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\u4e00-\u9fff]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "wiki-page";
+}
+
+function deriveTitle(q: string): string {
+  const cleaned = q.replace(/^(什么是|介绍|解释|请|能否|帮我)\s*/i, "");
+  return cleaned.length > 30 ? cleaned.slice(0, 30) + "..." : cleaned;
 }
 
 export default function AskPage() {
@@ -19,6 +31,14 @@ export default function AskPage() {
   ]);
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
+  const [writing, setWriting] = useState<{
+    msgIdx: number;
+    title: string;
+    content: string;
+    saving: boolean;
+    saved: boolean;
+    error: string;
+  } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -43,21 +63,128 @@ export default function AskPage() {
     } catch (e: any) {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: `❌ 查询失败: ${e.message}` },
+        { role: "assistant", content: "❌ 查询失败: " + e.message },
       ]);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleWriteClick = (msgIdx: number, msg: Message) => {
+    if (writing) return;
+    const prevMsg = messages[msgIdx - 1];
+    const suggested = prevMsg?.role === "user" ? deriveTitle(prevMsg.content) : "知识笔记";
+    setWriting({
+      msgIdx,
+      title: suggested,
+      content: msg.content,
+      saving: false,
+      saved: false,
+      error: "",
+    });
+  };
+
+  const handleWriteSave = async () => {
+    if (!writing) return;
+    setWriting((w) => w ? { ...w, saving: true, error: "" } : null);
+    try {
+      const slug = slugify(writing.title);
+      await putPage(slug, writing.content);
+      setWriting((w) => w ? { ...w, saving: false, saved: true, error: "" } : null);
+    } catch (e: any) {
+      setWriting((w) => w ? { ...w, saving: false, error: e.message } : null);
+    }
+  };
+
+  const handleWriteCancel = () => setWriting(null);
+
+  const renderWriteForm = () => {
+    if (!writing) return null;
+    return (
+      <div className="write-form">
+        <input
+          className="write-form__input"
+          value={writing.title}
+          onChange={(e) =>
+            setWriting((w) => w ? { ...w, title: e.target.value } : null)
+          }
+          placeholder="页面标题"
+          disabled={writing.saving}
+        />
+        <textarea
+          className="write-form__textarea"
+          value={writing.content}
+          onChange={(e) =>
+            setWriting((w) => w ? { ...w, content: e.target.value } : null)
+          }
+          placeholder="Wiki 内容 (Markdown)"
+          rows={6}
+          disabled={writing.saving}
+        />
+        {writing.error && (
+          <div className="write-form__error">{writing.error}</div>
+        )}
+        <div className="write-form__btns">
+          <button
+            className="write-btn write-btn--save"
+            onClick={handleWriteSave}
+            disabled={writing.saving || !writing.title.trim()}
+          >
+            {writing.saving ? "保存中..." : "保存"}
+          </button>
+          <button
+            className="write-btn write-btn--cancel"
+            onClick={handleWriteCancel}
+            disabled={writing.saving}
+          >
+            取消
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderActions = (msg: Message, i: number) => {
+    if (msg.role !== "assistant" || loading || i === 0) return null;
+
+    if (writing && writing.msgIdx === i) {
+      if (writing.saved) {
+        const slug = slugify(writing.title);
+        return (
+          <div className="message__actions">
+            <Link to={"/page/" + slug} className="write-btn write-btn--done">
+              已保存
+            </Link>
+          </div>
+        );
+      }
+      return (
+        <div className="message__actions">
+          {renderWriteForm()}
+        </div>
+      );
+    }
+
+    return (
+      <div className="message__actions">
+        <button
+          className="write-btn write-btn--trigger"
+          onClick={() => handleWriteClick(i, msg)}
+        >
+          写入 Wiki
+        </button>
+      </div>
+    );
+  };
+
   return (
     <div className="ask-page">
-      <h1>💬 问 Wiki</h1>
+      <h1>问 Wiki</h1>
       <p className="ask-page__desc">基于已编译的 Wiki 知识回答问题。</p>
 
       <div className="ask-page__messages">
         {messages.map((msg, i) => (
-          <div key={i} className={`message message--${msg.role}`}>
+          <div key={i} className={"message message--" + msg.role}>
             <div className="message__avatar">
               {msg.role === "user" ? "🧑" : "🤖"}
             </div>
@@ -71,12 +198,13 @@ export default function AskPage() {
                 <div className="message__sources">
                   来源:{" "}
                   {msg.sources.map((s) => (
-                    <Link key={s} to={`/page/${s}`} className="source-tag">
+                    <Link key={s} to={"/page/" + s} className="source-tag">
                       {s}
                     </Link>
                   ))}
                 </div>
               )}
+              {renderActions(msg, i)}
             </div>
           </div>
         ))}
