@@ -126,7 +126,7 @@ export default function Sidebar({ open, onToggle }: Props) {
         <Link to="/" className="sidebar__link">🏠 首页</Link>
         <Link to="/sources" className="sidebar__link">📄 源文件</Link>
         <Link to="/graph" className="sidebar__link">🕸️ 知识图谱</Link>
-        <Link to="/ask" className="sidebar__link">💬 问 Wiki</Link>
+        <Link to="/ask" className="sidebar__link">💬 对话</Link>
       </nav>
 
       <div className="sidebar__divider">页面</div>

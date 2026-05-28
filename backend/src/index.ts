@@ -12,6 +12,7 @@ import { graphRouter } from "./routes/graph.js";
 import { searchRouter } from "./routes/search.js";
 import { ingestRouter } from "./routes/ingest.js";
 import { queryRouter } from "./routes/query.js";
+import { chatRouter } from "./routes/chat.js";
 
 const app = new Hono();
 
@@ -43,6 +44,7 @@ app.route("/api/graph", graphRouter);
 app.route("/api/search", searchRouter);
 app.route("/api/ingest", ingestRouter);
 app.route("/api/query", queryRouter);
+app.route("/api/chat", chatRouter);
 
 // Startup
 console.log(`📄 Wiki directory: ${WIKI_DIR}`);

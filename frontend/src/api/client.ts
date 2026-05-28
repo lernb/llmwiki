@@ -167,6 +167,13 @@ export function queryWiki(question: string): Promise<QueryResponse> {
   });
 }
 
+export function chatWithWiki(messages: Array<{ role: "user" | "assistant"; content: string }>): Promise<QueryResponse> {
+  return fetchJSON("/chat", {
+    method: "POST",
+    body: JSON.stringify({ messages }),
+  });
+}
+
 // Search
 export function searchWiki(q: string): Promise<SearchResponse> {
   return fetchJSON(`/search?q=${encodeURIComponent(q)}`);
