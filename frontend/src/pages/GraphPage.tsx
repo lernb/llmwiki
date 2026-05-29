@@ -66,7 +66,8 @@ export default function GraphPage() {
 
     // ─── Vogel spiral layout (evenly fills the circle) ──────────────
     const cx = W / 2, cy = H / 2;
-    const layoutRadius = Math.min(W, H) * 0.40;
+    const nodeScale = Math.sqrt(Math.max(graph.nodes.length, 1) / 8);
+    const layoutRadius = Math.min(Math.min(W, H) * 0.50, Math.min(W, H) * 0.40 * nodeScale);
 
     const homeNodes = graph.nodes.map((n, i) => {
       const idx = i + 1;
@@ -154,7 +155,7 @@ export default function GraphPage() {
           ctx.strokeStyle = isDark ? `rgba(210,220,230,${a * pulse})` : `rgba(80,100,130,${a * pulse})`;
           ctx.lineWidth = 0.4 + tV * 0.7;
         } else {
-          ctx.strokeStyle = isDark ? "rgba(136,153,187,0.12)" : "rgba(102,119,136,0.13)";
+          ctx.strokeStyle = isDark ? "rgba(136,153,187,0.20)" : "rgba(102,119,136,0.13)";
           ctx.lineWidth = 0.4;
         }
         ctx.beginPath();
@@ -177,10 +178,11 @@ export default function GraphPage() {
 
         const hue = 195;
 
-        if (isDimmed) ctx.globalAlpha = 0.65 - hoverTransition * 0.57;
-        else if (isHovered) ctx.globalAlpha = 0.65 + hoverTransition * 0.35;
-        else if (isConnected) ctx.globalAlpha = 0.65 + hoverTransition * 0.2;
-        else ctx.globalAlpha = 0.65;
+        const baseAlpha = isDark ? 0.82 : 0.65;
+        if (isDimmed) ctx.globalAlpha = baseAlpha - hoverTransition * 0.57;
+        else if (isHovered) ctx.globalAlpha = baseAlpha + hoverTransition * 0.35;
+        else if (isConnected) ctx.globalAlpha = baseAlpha + hoverTransition * 0.2;
+        else ctx.globalAlpha = baseAlpha;
 
         // White glow on hovered node only
         if (isHovered && hoverTransition > 0.01) {
@@ -196,9 +198,9 @@ export default function GraphPage() {
           ctx.fill();
         }
 
-        const normalH = isDark ? 30 + ratio * 20 : 35 + ratio * 15;
-        const hoverH = isDark ? 72 : 65;
-        const connH = isDark ? 52 : 52;
+        const normalH = isDark ? 42 + ratio * 18 : 35 + ratio * 15;
+        const hoverH = isDark ? 75 : 65;
+        const connH = isDark ? 58 : 52;
         const fillH = isHovered ? normalH + (hoverH - normalH) * hoverTransition
           : isConnected ? normalH + (connH - normalH) * hoverTransition
           : normalH;

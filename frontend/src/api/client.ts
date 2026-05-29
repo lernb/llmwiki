@@ -180,7 +180,7 @@ export function chatStream(
   messages: Array<{ role: "user" | "assistant"; content: string }>,
   callbacks: {
     onToken: (token: string) => void;
-    onDone: (result: { content: string; sources: string[]; wikiSaved?: { title: string; slug: string } | null }) => void;
+    onDone: (result: { content: string; sources: Array<{ slug: string; title: string }>; wikiSaved?: { title: string; slug: string } | null }) => void;
     onError: (err: Error) => void;
   },
 ): AbortController {

@@ -4,10 +4,33 @@ import remarkGfm from "remark-gfm";
 import { Link } from "react-router-dom";
 import { chatStream } from "../api/client";
 
+function SourceTags({ sources }: { sources: Array<{ slug: string; title: string }> | string[] }) {
+  const [expanded, setExpanded] = useState(false);
+  if (sources.length === 0) return null;
+  return (
+    <div className="chat__msg-sources">
+      <div className={`chat__source-list ${expanded ? "" : "chat__source-list--collapsed"}`}>
+        {sources.map((s) => {
+          const slug = typeof s === "string" ? s : s.slug;
+          const title = typeof s === "string" ? s : s.title;
+          return <Link key={slug} to={"/page/" + slug} className="chat__source-tag">{title}</Link>;
+        })}
+      </div>
+      {sources.length > 3 && (
+        <button className={`chat__source-expand ${expanded ? "chat__source-expand--active" : ""}`} onClick={() => setExpanded((v) => !v)}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+      )}
+    </div>
+  );
+}
+
 interface Message {
   role: "user" | "assistant";
   content: string;
-  sources?: string[];
+  sources?: Array<{ slug: string; title: string }>;
   wikiSaved?: { title: string; slug: string } | null;
 }
 
@@ -24,7 +47,7 @@ function saveConversationAsMarkdown(messages: Message[]) {
     lines.push(msg.content);
     lines.push("");
     if (msg.sources && msg.sources.length > 0) {
-      lines.push("*来源: " + msg.sources.join(", ") + "*");
+      lines.push("*来源: " + msg.sources.map((s) => s.title).join(", ") + "*");
       lines.push("");
     }
     lines.push("---");
@@ -50,7 +73,7 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
   const [streamingMeta, setStreamingMeta] = useState<{
-    sources: string[];
+    sources: Array<{ slug: string; title: string }>;
     wikiSaved?: { title: string; slug: string } | null;
   } | null>(null);
   const [showExportConfirm, setShowExportConfirm] = useState(false);
@@ -58,18 +81,22 @@ export default function ChatPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const userAtBottomRef = useRef(true);
+  const initializedRef = useRef(false);
 
   useEffect(() => {
-    const saved = sessionStorage.getItem(SESSION_KEY);
-    if (saved) {
-      try {
+    try {
+      const saved = sessionStorage.getItem(SESSION_KEY);
+      if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) setMessages(parsed);
-      } catch {}
-    }
+      }
+    } catch {}
+    initializedRef.current = true;
   }, []);
 
   useEffect(() => {
+    if (!initializedRef.current) return;
     if (messages.length > 0) {
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(messages));
     } else {
@@ -78,8 +105,25 @@ export default function ChatPage() {
   }, [messages]);
 
   useEffect(() => {
+    const main = document.querySelector(".main");
+    if (!main) return;
+    const onScroll = () => {
+      const threshold = 80;
+      userAtBottomRef.current = main.scrollTop + main.clientHeight >= main.scrollHeight - threshold;
+    };
+    main.addEventListener("scroll", onScroll, { passive: true });
+    return () => main.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    if (userAtBottomRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [streamingContent]);
+
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, streamingContent, loading]);
+  }, [messages]);
 
   useEffect(() => {
     if (!loading) inputRef.current?.focus();
@@ -204,13 +248,7 @@ export default function ChatPage() {
                     已保存到 Wiki：<Link to={"/page/" + msg.wikiSaved.slug}>{msg.wikiSaved.title}</Link>
                   </div>
                 )}
-                {msg.sources && msg.sources.length > 0 && (
-                  <div className="chat__msg-sources">
-                    {msg.sources.map((s) => (
-                      <Link key={s} to={"/page/" + s} className="chat__source-tag">{s}</Link>
-                    ))}
-                  </div>
-                )}
+                {msg.sources && msg.sources.length > 0 && <SourceTags sources={msg.sources} />}
               </div>
             </div>
           ))}

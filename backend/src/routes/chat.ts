@@ -75,7 +75,7 @@ chatRouter.post("/", async (c) => {
     const systemPrompt = buildSystemPrompt(searchHits);
     const raw = await chat(messages, { system: systemPrompt, temperature: 0.5, maxTokens: 4096 });
     const { clean, wikiSaved } = parseWikiMarkers(raw);
-    return c.json({ answer: clean, sources: searchHits.map((h) => h.slug), wikiSaved });
+    return c.json({ answer: clean, sources: searchHits.map((h) => ({ slug: h.slug, title: h.title })), wikiSaved });
   } catch (e: any) {
     return c.json({ error: "Chat failed: " + e.message }, 500);
   }
@@ -109,7 +109,7 @@ chatRouter.post("/stream", async (c) => {
     await stream.write("data: " + JSON.stringify({
       type: "done",
       content: clean,
-      sources: searchHits.map((h) => h.slug),
+      sources: searchHits.map((h) => ({ slug: h.slug, title: h.title })),
       wikiSaved,
     }) + "\n\n");
   });

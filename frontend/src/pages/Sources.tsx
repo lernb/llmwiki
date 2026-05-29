@@ -105,7 +105,7 @@ export default function Sources() {
 
     if (isReingest) {
       setConfirmAction({
-        message: `「${filename}」已消化过，确定要重新消化吗？已创建的 Wiki 页面将被覆盖。`,
+        message: `「${filename}」已消化过，确定要重新消化吗？已创建的 Wiki 页面将被全部覆盖。`,
         onConfirm: doIngest,
         confirmLabel: "确认重新消化",
         variant: "danger",
@@ -146,7 +146,7 @@ export default function Sources() {
     const label = isReingest ? `重新消化全部 ${count} 个已消化的源文件` : `消化全部 ${count} 个待消化的源文件`;
 
     setConfirmAction({
-      message: `确定要${label}吗？${isReingest ? "已创建的 Wiki 页面将被覆盖。" : "这将消耗 API 额度。"}`,
+      message: `确定要${label}吗？${isReingest ? "已创建的 Wiki 页面将被全部覆盖。" : "这将消耗 API 额度。"}`,
       onConfirm: async () => {
         setIngestingAll(true);
         setConfirmAction(null);
@@ -397,30 +397,45 @@ export default function Sources() {
         </div>
       )}
 
-      {/* Delete dialog with choice */}
+      {/* Delete dialog */}
       {deleteTarget && (
         <div className="chat__confirm-overlay" onClick={() => setDeleteTarget(null)}>
           <div className="chat__confirm-dialog" onClick={(e) => e.stopPropagation()}>
-            <p>删除源文件「{deleteTarget.filename}」后，对应的 Wiki 页面如何处理？</p>
-            <div className="sources__delete-choices">
-              <button className="chat__btn chat__btn--block" onClick={() => {
-                deleteSource(deleteTarget.filename).then(fetchSources);
-                setDeleteTarget(null);
-              }}>
-                仅删除源文件，保留 Wiki 页面
-              </button>
-              {deleteTarget.hasPages && (
-                <button className="chat__btn chat__btn--danger chat__btn--block" onClick={() => {
-                  deleteSource(deleteTarget.filename, { deletePages: true }).then(fetchSources);
-                  setDeleteTarget(null);
-                }}>
-                  一并删除源文件和对应的 Wiki 页面
-                </button>
-              )}
-              <button className="chat__btn chat__btn--block" style={{ marginTop: 8 }} onClick={() => setDeleteTarget(null)}>
-                取消
-              </button>
-            </div>
+            {deleteTarget.hasPages ? (
+              <>
+                <p>删除源文件「{deleteTarget.filename}」</p>
+                <div className="sources__delete-choices">
+                  <button className="chat__btn chat__btn--block" onClick={() => {
+                    deleteSource(deleteTarget.filename).then(fetchSources);
+                    setDeleteTarget(null);
+                  }}>
+                    仅删除源文件，保留 Wiki 页面
+                  </button>
+                  <button className="chat__btn chat__btn--danger chat__btn--block" onClick={() => {
+                    deleteSource(deleteTarget.filename, { deletePages: true }).then(fetchSources);
+                    setDeleteTarget(null);
+                  }}>
+                    同时删除源文件和对应的 Wiki 页面
+                  </button>
+                  <button className="chat__btn chat__btn--block" style={{ marginTop: 8 }} onClick={() => setDeleteTarget(null)}>
+                    取消
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p>确定要删除源文件「{deleteTarget.filename}」吗？</p>
+                <div className="chat__confirm-actions">
+                  <button className="chat__btn" onClick={() => setDeleteTarget(null)}>取消</button>
+                  <button className="chat__btn chat__btn--danger" onClick={() => {
+                    deleteSource(deleteTarget.filename).then(fetchSources);
+                    setDeleteTarget(null);
+                  }}>
+                    确认删除
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
