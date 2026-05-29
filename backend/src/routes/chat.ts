@@ -3,7 +3,6 @@ import { stream as honoStream } from "hono/streaming";
 import { chat, chatStream } from "../core/llm.js";
 import { search } from "../core/search.js";
 import { readPage, writePage } from "../storage/fileStore.js";
-import { loadAgentsMd } from "../core/ingester.js";
 import { buildIndex } from "../core/search.js";
 
 const chatRouter = new Hono();
@@ -20,12 +19,10 @@ function buildSystemPrompt(searchHits: Array<{ slug: string; title: string }>): 
     }
   }
 
-  const agentsMd = loadAgentsMd() || "";
-  return agentsMd
-    + "\n\n你是 Wiki 知识库的聊天助手。基于 wiki 内容回答，注明来源。"
+  return "你是 Wiki 知识库的聊天助手。只基于 wiki 内容回答，注明来源。"
     + (searchHits.length > 0
       ? " 已加载以上相关 wiki 页面供参考。"
-      : " 当前 wiki 没有相关内容，可以基于通用知识回答，但说明 wiki 中尚无记录。")
+      : " 当前 wiki 中没有相关内容，请如实告知用户，不要自行编造。")
     + "\n\n注意区分用户意图："
 
     + "\n\n1. 如果用户只是提问（什么是XX、解释一下XX、XX有哪些特点等），"

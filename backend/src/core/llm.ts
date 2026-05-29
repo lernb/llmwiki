@@ -28,6 +28,8 @@ function getClient(): OpenAI {
   return client;
 }
 
+type MessageContent = string | Array<Record<string, any>>;
+
 export interface ChatOptions {
   model?: string;
   temperature?: number;
@@ -37,7 +39,7 @@ export interface ChatOptions {
 }
 
 export async function chat(
-  messages: Array<{ role: "user" | "assistant" | "system"; content: string }>,
+  messages: Array<{ role: "user" | "assistant" | "system"; content: MessageContent }>,
   options: ChatOptions = {}
 ): Promise<string> {
   const preset = PRESETS[LLM_PROVIDER] || PRESETS.deepseek;
@@ -71,27 +73,35 @@ export async function chat(
     }
     const data: any = await resp.json();
     const text = data.choices?.[0]?.message?.content;
-    if (!text) throw new Error("LLM returned empty response");
+    if (!text) {
+      const refusal = data.choices?.[0]?.message?.refusal ? ` (refusal: ${data.choices?.[0]?.message?.refusal?.slice?.(0, 200)})` : "";
+      const finishReason = data.choices?.[0]?.finish_reason ? ` (finish_reason: ${data.choices?.[0]?.finish_reason})` : "";
+      throw new Error(`LLM returned empty response${refusal}${finishReason}`);
+    }
     return text;
   }
 
   const c = getClient();
-  const resp = await c.chat.completions.create({
+  const resp = await (c.chat.completions.create as any)({
     model,
     messages: allMessages,
     temperature: options.temperature ?? 0.3,
     max_tokens: options.maxTokens ?? 4096,
   }, { signal: options.signal });
 
-  const text = resp.choices?.[0]?.message?.content;
+  const choice = resp.choices?.[0];
+  const message = choice?.message;
+  const text = message?.content;
   if (!text) {
-    throw new Error("LLM returned empty response");
+    const refusal = message?.refusal ? ` (refusal: ${message?.refusal?.slice?.(0, 200)})` : "";
+    const finishReason = choice?.finish_reason ? ` (finish_reason: ${choice.finish_reason})` : "";
+    throw new Error(`LLM returned empty response${refusal}${finishReason}`);
   }
   return text;
 }
 
 export async function* chatStream(
-  messages: Array<{ role: "user" | "assistant" | "system"; content: string }>,
+  messages: Array<{ role: "user" | "assistant" | "system"; content: MessageContent }>,
   options: ChatOptions = {}
 ): AsyncGenerator<string> {
   const preset = PRESETS[LLM_PROVIDER] || PRESETS.deepseek;
@@ -152,7 +162,7 @@ export async function* chatStream(
   }
 
   const c = getClient();
-  const streamResp = await c.chat.completions.create({
+  const streamResp = await (c.chat.completions.create as any)({
     model,
     messages: allMessages,
     temperature: options.temperature ?? 0.5,

@@ -142,6 +142,14 @@ export function deleteSource(filename: string): boolean {
   return false;
 }
 
+/** Read raw source file buffer (for multi-modal ingestion). */
+export function readSourceBuffer(filename: string): Buffer | null {
+  const safeFilename = basename(filename);
+  const path = resolve(SOURCES_DIR, safeFilename);
+  if (!existsSync(path)) return null;
+  return readFileSync(path);
+}
+
 // ─── Internal ────────────────────────────────────────────────────────
 
 function titleFromFile(path: string): string | null {

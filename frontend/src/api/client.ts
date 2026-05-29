@@ -91,7 +91,7 @@ async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || `HTTP ${res.status}`);
+    throw new Error(err.error || err.message || `HTTP ${res.status}`);
   }
   return res.json();
 }
@@ -133,8 +133,9 @@ export function uploadSource(file: File): Promise<SourceSummary> {
   });
 }
 
-export function deleteSource(filename: string): Promise<{ status: string }> {
-  return fetchJSON(`/sources/${encodeURIComponent(filename)}`, { method: "DELETE" });
+export function deleteSource(filename: string, options?: { deletePages?: boolean }): Promise<{ status: string; deletedPages?: string[] }> {
+  const qs = options?.deletePages ? "?deletePages=true" : "";
+  return fetchJSON(`/sources/${encodeURIComponent(filename)}${qs}`, { method: "DELETE" });
 }
 
 // Ingest

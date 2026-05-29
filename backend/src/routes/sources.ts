@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { statSync, existsSync, readFileSync } from "node:fs";
 import { resolve, basename } from "node:path";
-import { listSources, readSource, saveSource, deleteSource } from "../storage/fileStore.js";
+import { listSources, readSource, saveSource, deleteSource, deletePage } from "../storage/fileStore.js";
 import { getAllIngestStatuses, getIngestStatus, removeIngestRecord } from "../storage/ingestMeta.js";
 import { SOURCES_DIR } from "../config.js";
 
@@ -90,11 +90,24 @@ sourcesRouter.get("/:filename/download", (c) => {
 // Delete a source file
 sourcesRouter.delete("/:filename", (c) => {
   const filename = c.req.param("filename");
+  const deletePages = c.req.query("deletePages") === "true";
+
+  const ingestRecord = getIngestStatus(filename);
+
   if (!deleteSource(filename)) {
     return c.json({ error: `Source '${filename}' not found` }, 404);
   }
+
+  // Optionally delete associated wiki pages
+  const deletedPages: string[] = [];
+  if (deletePages && ingestRecord) {
+    for (const slug of ingestRecord.pagesCreated) {
+      if (deletePage(slug)) deletedPages.push(slug);
+    }
+  }
+
   removeIngestRecord(filename);
-  return c.json({ status: "deleted", filename });
+  return c.json({ status: "deleted", filename, deletedPages });
 });
 
 export { sourcesRouter };
