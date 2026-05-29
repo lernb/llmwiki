@@ -2,38 +2,94 @@ import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Link } from "react-router-dom";
-import { chatWithWiki, putPage } from "../api/client";
+import { chatStream } from "../api/client";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
   sources?: string[];
+  wikiSaved?: { title: string; slug: string } | null;
 }
 
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^\w\u4e00-\u9fff]+/g, "-")
-    .replace(/^-+|-+$/g, "") || "wiki-page";
+function saveConversationAsMarkdown(messages: Message[]) {
+  const lines: string[] = [];
+  lines.push("# 对话记录");
+  lines.push("> 导出时间: " + new Date().toLocaleString("zh-CN"));
+  lines.push("> 消息数: " + messages.length);
+  lines.push("");
+  for (const msg of messages) {
+    const roleLabel = msg.role === "user" ? "用户" : "助手";
+    lines.push("## " + roleLabel);
+    lines.push("");
+    lines.push(msg.content);
+    lines.push("");
+    if (msg.sources && msg.sources.length > 0) {
+      lines.push("*来源: " + msg.sources.join(", ") + "*");
+      lines.push("");
+    }
+    lines.push("---");
+    lines.push("");
+  }
+  const md = lines.join("\n");
+  const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "对话记录-" + new Date().toISOString().slice(0, 10) + ".md";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
-export default function AskPage() {
+const SESSION_KEY = "chat_messages";
+
+export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [writing, setWriting] = useState<{
-    msgIdx: number;
-    title: string;
-    content: string;
-    saving: boolean;
-    saved: boolean;
-    error: string;
-    slug: string;
+  const [streamingContent, setStreamingContent] = useState("");
+  const [streamingMeta, setStreamingMeta] = useState<{
+    sources: string[];
+    wikiSaved?: { title: string; slug: string } | null;
   } | null>(null);
+  const [showExportConfirm, setShowExportConfirm] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    const saved = sessionStorage.getItem(SESSION_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) setMessages(parsed);
+      } catch {}
+    }
+  }, []);
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(messages));
+    } else {
+      sessionStorage.removeItem(SESSION_KEY);
+    }
+  }, [messages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, streamingContent, loading]);
+
+  useEffect(() => {
+    if (!loading) inputRef.current?.focus();
+  }, [loading]);
+
+  useEffect(() => {
+    if (messages.length === 0) return;
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
   }, [messages]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -46,216 +102,211 @@ export default function AskPage() {
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setLoading(true);
+    setStreamingContent("");
+    setStreamingMeta(null);
 
-    try {
-      const history = updatedMessages.map((m) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      }));
-      const res = await chatWithWiki(history);
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: res.answer, sources: res.sources },
-      ]);
-    } catch (e: any) {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: "❌ 请求失败: " + e.message },
-      ]);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const history = updatedMessages.map((m) => ({
+      role: m.role as "user" | "assistant",
+      content: m.content,
+    }));
 
-  const handleWriteClick = (msgIdx: number, msg: Message) => {
-    if (writing) return;
-
-    const lastQuestion = [...messages]
-      .slice(0, msgIdx)
-      .reverse()
-      .find((m) => m.role === "user");
-
-    const cleaned = lastQuestion
-      ? lastQuestion.content
-          .replace(/^(什么是|介绍|解释|请|能否|帮我|把|将|写入|添加到)\s*/i, "")
-          .slice(0, 30)
-      : "新知识";
-    const title = cleaned || "新知识";
-
-    setWriting({
-      msgIdx,
-      title,
-      content: msg.content,
-      saving: false,
-      saved: false,
-      error: "",
-      slug: "",
+    abortRef.current = chatStream(history, {
+      onToken: (token) => {
+        setStreamingContent((prev) => prev + token);
+      },
+      onDone: (result) => {
+        const msg: Message = {
+          role: "assistant",
+          content: result.content,
+          sources: result.sources,
+          wikiSaved: result.wikiSaved || undefined,
+        };
+        setMessages((prev) => [...prev, msg]);
+        setStreamingContent("");
+        setStreamingMeta(null);
+        setLoading(false);
+        abortRef.current = null;
+      },
+      onError: (err) => {
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: "请求失败: " + err.message },
+        ]);
+        setStreamingContent("");
+        setStreamingMeta(null);
+        setLoading(false);
+        abortRef.current = null;
+      },
     });
   };
 
-  const handleWriteSave = async () => {
-    if (!writing) return;
-    setWriting((w) => w ? { ...w, saving: true, error: "" } : null);
-    try {
-      const slug = slugify(writing.title);
-      await putPage(slug, writing.content);
-      setWriting((w) => w ? { ...w, saving: false, saved: true, error: "", slug } : null);
-    } catch (e: any) {
-      setWriting((w) => w ? { ...w, saving: false, error: e.message } : null);
-    }
-  };
-
-  const handleWriteCancel = () => setWriting(null);
-
-  const renderActions = (msg: Message, i: number) => {
-    if (msg.role !== "assistant" || loading) return null;
-
-    if (writing && writing.msgIdx === i) {
-      if (writing.saved) {
-        return (
-          <div className="message__actions">
-            <Link to={"/page/" + writing.slug} className="write-btn write-btn--done">
-              ✅ 已保存 - 查看
-            </Link>
-          </div>
-        );
-      }
-      return (
-        <div className="message__actions">
-          <div className="write-form">
-            <div className="write-form__hint">
-              编辑内容后保存到 Wiki。可以修改标题和补充你自己的知识。
-            </div>
-            <input
-              className="write-form__input"
-              value={writing.title}
-              onChange={(e) =>
-                setWriting((w) => w ? { ...w, title: e.target.value } : null)
-              }
-              placeholder="页面标题"
-              disabled={writing.saving}
-            />
-            <textarea
-              className="write-form__textarea"
-              value={writing.content}
-              onChange={(e) =>
-                setWriting((w) => w ? { ...w, content: e.target.value } : null)
-              }
-              placeholder="Wiki 内容 (Markdown)"
-              rows={8}
-              disabled={writing.saving}
-            />
-            {writing.error && (
-              <div className="write-form__error">{writing.error}</div>
-            )}
-            <div className="write-form__btns">
-              <button
-                className="write-btn write-btn--save"
-                onClick={handleWriteSave}
-                disabled={writing.saving || !writing.title.trim() || !writing.content.trim()}
-              >
-                {writing.saving ? "保存中..." : "💾 保存到 Wiki"}
-              </button>
-              <button
-                className="write-btn write-btn--cancel"
-                onClick={handleWriteCancel}
-                disabled={writing.saving}
-              >
-                取消
-              </button>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="message__actions">
-        <button
-          className="write-btn write-btn--trigger"
-          onClick={() => handleWriteClick(i, msg)}
-        >
-          📝 写入 Wiki
-        </button>
-      </div>
-    );
+  const handleClear = () => {
+    if (abortRef.current) abortRef.current.abort();
+    setMessages([]);
+    setStreamingContent("");
+    setStreamingMeta(null);
+    sessionStorage.removeItem(SESSION_KEY);
+    inputRef.current?.focus();
   };
 
   return (
-    <div className="ask-page">
-      <h1>💬 对话</h1>
-      <p className="ask-page__desc">
-        与 LLM 对话，讨论 wiki 知识，并将新内容写入 wiki。
-      </p>
-
-      <div className="ask-page__messages">
-        {messages.length === 0 && (
-          <div className="message message--assistant">
-            <div className="message__avatar">🤖</div>
-            <div className="message__body">
-              <div className="message__content markdown-body">
-                <p>你好！我可以：</p>
-                <ul>
-                  <li>回答关于已有 wiki 知识的问题</li>
-                  <li>讨论你希望补充到 wiki 的新知识</li>
-                  <li>协助你将讨论结果整理成 wiki 页面</li>
-                </ul>
-                <p>试试说：<em>"帮我把关于 XX 的知识整理到 wiki"</em></p>
-              </div>
-            </div>
+    <div className="chat">
+      <div className="chat__inner">
+        <div className="chat__header">
+          <div className="chat__header-left">
+            <h1 className="chat__title">对话</h1>
+            <span className="chat__subtitle">与 Wiki 知识库对话，探索和记录知识</span>
           </div>
-        )}
+          <div className="chat__header-actions">
+            <button className="chat__btn" disabled={messages.length === 0} onClick={() => setShowExportConfirm(true)} title="导出对话记录">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              导出
+            </button>
+            <button className="chat__btn chat__btn--danger" disabled={messages.length === 0} onClick={() => setShowClearConfirm(true)} title="清空对话">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              清空
+            </button>
+          </div>
+        </div>
 
-        {messages.map((msg, i) => (
-          <div key={i} className={"message message--" + msg.role}>
-            <div className="message__avatar">
-              {msg.role === "user" ? "🧑" : "🤖"}
-            </div>
-            <div className="message__body">
-              <div className="message__content markdown-body">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {msg.content}
-                </ReactMarkdown>
+        <div className="chat__msgs">
+          {messages.length === 0 && (
+            <div className="chat__empty">
+              <div className="chat__empty-icon">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
               </div>
-              {msg.sources && msg.sources.length > 0 && (
-                <div className="message__sources">
-                  来源:{" "}
-                  {msg.sources.map((s) => (
-                    <Link key={s} to={"/page/" + s} className="source-tag">
-                      {s}
-                    </Link>
-                  ))}
+              <h2 className="chat__empty-title">Wiki 知识对话</h2>
+              <p className="chat__empty-desc">
+                与 LLM 讨论已有知识，或补充新内容。当提供的信息在 Wiki 中尚无记录时，可以自动整理保存。
+              </p>
+            </div>
+          )}
+
+          {messages.map((msg, i) => (
+            <div key={i} className={"chat__msg chat__msg--" + msg.role}>
+              {msg.role === "assistant" && (
+                <div className="chat__msg-avatar">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z"/><path d="M4 22v-2a8 8 0 0 1 16 0v2"/></svg>
                 </div>
               )}
-              {renderActions(msg, i)}
+              <div className="chat__msg-body">
+                <div className={"chat__msg-bubble" + (msg.role === "assistant" ? "" : " chat__msg-bubble--user")}>
+                  {msg.role === "user" ? (
+                    <p>{msg.content}</p>
+                  ) : (
+                    <div className="markdown-body">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                    </div>
+                  )}
+                </div>
+                {msg.wikiSaved && (
+                  <div className="chat__msg-saved">
+                    已保存到 Wiki：<Link to={"/page/" + msg.wikiSaved.slug}>{msg.wikiSaved.title}</Link>
+                  </div>
+                )}
+                {msg.sources && msg.sources.length > 0 && (
+                  <div className="chat__msg-sources">
+                    {msg.sources.map((s) => (
+                      <Link key={s} to={"/page/" + s} className="chat__source-tag">{s}</Link>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
 
-        {loading && (
-          <div className="message message--assistant">
-            <div className="message__avatar">🤖</div>
-            <div className="message__body">
-              <div className="message__content thinking">思考中...</div>
+          {streamingContent && (
+            <div className="chat__msg chat__msg--assistant">
+              <div className="chat__msg-avatar">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z"/><path d="M4 22v-2a8 8 0 0 1 16 0v2"/></svg>
+              </div>
+              <div className="chat__msg-body">
+                <div className="chat__msg-bubble">
+                  <div className="markdown-body">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{streamingContent}</ReactMarkdown>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {loading && !streamingContent && (
+            <div className="chat__msg chat__msg--assistant">
+              <div className="chat__msg-avatar">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z"/><path d="M4 22v-2a8 8 0 0 1 16 0v2"/></svg>
+              </div>
+              <div className="chat__msg-body">
+                <div className="chat__msg-bubble">
+                  <span className="chat__typing">
+                    <span className="chat__dot" /><span className="chat__dot" /><span className="chat__dot" />
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div ref={bottomRef} />
+        </div>
+
+        <form className="chat__input-wrap" onSubmit={handleSubmit}>
+          <div className="chat__input-bar">
+            <textarea
+              ref={inputRef}
+              rows={1}
+              placeholder="输入消息..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onInput={(e) => {
+                const el = e.currentTarget;
+                el.style.height = "auto";
+                el.style.height = el.scrollHeight + "px";
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  const form = (e.target as HTMLTextAreaElement).form;
+                  if (form) form.requestSubmit();
+                }
+              }}
+              disabled={loading}
+              autoFocus
+            />
+            <button type="submit" className="chat__send" disabled={loading || !input.trim()}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+        </form>
+
+        {showExportConfirm && (
+          <div className="chat__confirm-overlay" onClick={() => setShowExportConfirm(false)}>
+            <div className="chat__confirm-dialog" onClick={(e) => e.stopPropagation()}>
+              <p>确认导出全部对话记录为 Markdown 文件？</p>
+              <div className="chat__confirm-actions">
+                <button className="chat__btn" onClick={() => setShowExportConfirm(false)}>取消</button>
+                <button className="chat__btn chat__btn--primary" onClick={() => {
+                  saveConversationAsMarkdown(messages);
+                  setShowExportConfirm(false);
+                }}>确认导出</button>
+              </div>
             </div>
           </div>
         )}
 
-        <div ref={bottomRef} />
+        {showClearConfirm && (
+          <div className="chat__confirm-overlay" onClick={() => setShowClearConfirm(false)}>
+            <div className="chat__confirm-dialog" onClick={(e) => e.stopPropagation()}>
+              <p>确认清空全部对话？此操作不可撤销。</p>
+              <div className="chat__confirm-actions">
+                <button className="chat__btn" onClick={() => setShowClearConfirm(false)}>取消</button>
+                <button className="chat__btn chat__btn--danger" onClick={() => {
+                  handleClear();
+                  setShowClearConfirm(false);
+                }}>确认清空</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-
-      <form className="ask-page__input" onSubmit={handleSubmit}>
-        <input
-          type="text"
-          placeholder="输入消息..."
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          disabled={loading}
-        />
-        <button type="submit" disabled={loading || !input.trim()}>
-          发送
-        </button>
-      </form>
     </div>
   );
 }

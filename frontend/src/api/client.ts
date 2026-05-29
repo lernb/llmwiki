@@ -77,6 +77,7 @@ export interface IngestResult {
 export interface QueryResponse {
   answer: string;
   sources: string[];
+  wikiSaved?: { title: string; slug: string } | null;
 }
 
 // ─── API Client ─────────────────────────────────────────────────────
@@ -172,6 +173,59 @@ export function chatWithWiki(messages: Array<{ role: "user" | "assistant"; conte
     method: "POST",
     body: JSON.stringify({ messages }),
   });
+}
+
+export function chatStream(
+  messages: Array<{ role: "user" | "assistant"; content: string }>,
+  callbacks: {
+    onToken: (token: string) => void;
+    onDone: (result: { content: string; sources: string[]; wikiSaved?: { title: string; slug: string } | null }) => void;
+    onError: (err: Error) => void;
+  },
+): AbortController {
+  const controller = new AbortController();
+
+  fetch("/api/chat/stream", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages }),
+    signal: controller.signal,
+  }).then(async (response) => {
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: response.statusText }));
+      throw new Error(err.error || "HTTP " + response.status);
+    }
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error("No response body");
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        try {
+          const data = JSON.parse(line.slice(6));
+          if (data.type === "token") callbacks.onToken(data.content);
+          else if (data.type === "done") callbacks.onDone(data);
+          else if (data.type === "error") throw new Error(data.message);
+        } catch (e: any) {
+          if (e.message !== "The user aborted a request.") {
+            callbacks.onError(e);
+          }
+        }
+      }
+    }
+  }).catch((e) => {
+    if (e.name !== "AbortError") callbacks.onError(e);
+  });
+
+  return controller;
 }
 
 // Search

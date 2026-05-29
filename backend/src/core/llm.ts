@@ -1,20 +1,5 @@
-/**
- * LLM client — supports multiple providers:
- *   - deepseek     : DeepSeek API (default)
- *   - openai       : OpenAI API
- *   - local        : Any OpenAI-compatible endpoint (llama.cpp, Ollama, LM Studio, etc.)
- *
- * Configure via environment / .env:
- *   LLM_PROVIDER=deepseek|openai|local
- *   LLM_API_KEY=sk-xxx              (not needed for local models)
- *   LLM_BASE_URL=...                (defaults per provider)
- *   LLM_MODEL=...                   (defaults per provider)
- */
-
 import OpenAI from "openai";
 import { LLM_PROVIDER, LLM_API_KEY, LLM_BASE_URL, LLM_MODEL } from "../config.js";
-
-// ─── Provider presets ────────────────────────────────────────────────
 
 const PRESETS: Record<string, { baseURL: string; model: string }> = {
   deepseek: {
@@ -30,8 +15,6 @@ const PRESETS: Record<string, { baseURL: string; model: string }> = {
     model: "local-model",
   },
 };
-
-// ─── Client (for deepseek / openai) ──────────────────────────────────
 
 let client: OpenAI | null = null;
 
@@ -53,10 +36,6 @@ export interface ChatOptions {
   signal?: AbortSignal;
 }
 
-/**
- * Send a chat completion request — uses raw fetch for local provider
- * to avoid sending unwanted Authorization headers.
- */
 export async function chat(
   messages: Array<{ role: "user" | "assistant" | "system"; content: string }>,
   options: ChatOptions = {}
@@ -69,7 +48,6 @@ export async function chat(
     ? [{ role: "system" as const, content: options.system }, ...messages]
     : messages;
 
-  // Local provider — direct HTTP call
   if (LLM_PROVIDER === "local") {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (LLM_API_KEY) headers["Authorization"] = `Bearer ${LLM_API_KEY}`;
@@ -83,6 +61,7 @@ export async function chat(
         messages: allMessages,
         temperature: options.temperature ?? 0.3,
         max_tokens: options.maxTokens ?? 4096,
+        stream: false,
       }),
       signal: options.signal,
     });
@@ -96,7 +75,6 @@ export async function chat(
     return text;
   }
 
-  // DeepSeek / OpenAI — use SDK
   const c = getClient();
   const resp = await c.chat.completions.create({
     model,
@@ -112,9 +90,82 @@ export async function chat(
   return text;
 }
 
-/**
- * Quick check: is the LLM configured and reachable?
- */
+export async function* chatStream(
+  messages: Array<{ role: "user" | "assistant" | "system"; content: string }>,
+  options: ChatOptions = {}
+): AsyncGenerator<string> {
+  const preset = PRESETS[LLM_PROVIDER] || PRESETS.deepseek;
+  const baseURL = LLM_BASE_URL || preset.baseURL;
+  const model = options.model || LLM_MODEL || preset.model;
+
+  const allMessages = options.system
+    ? [{ role: "system" as const, content: options.system }, ...messages]
+    : messages;
+
+  if (LLM_PROVIDER === "local") {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (LLM_API_KEY) headers["Authorization"] = `Bearer ${LLM_API_KEY}`;
+
+    const url = `${baseURL.replace(/\/+$/, "")}/chat/completions`;
+    const resp = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model,
+        messages: allMessages,
+        temperature: options.temperature ?? 0.5,
+        max_tokens: options.maxTokens ?? 4096,
+        stream: true,
+      }),
+      signal: options.signal,
+    });
+    if (!resp.ok) {
+      const body = await resp.text().catch(() => "");
+      throw new Error(`${resp.status} ${resp.statusText}${body ? ": " + body.slice(0, 200) : ""}`);
+    }
+
+    const reader = resp.body?.getReader();
+    if (!reader) throw new Error("No response body");
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          const data = line.slice(6).trim();
+          if (data === "[DONE]") return;
+          try {
+            const json = JSON.parse(data);
+            const content = json.choices?.[0]?.delta?.content || "";
+            if (content) yield content;
+          } catch {}
+        }
+      }
+    }
+    return;
+  }
+
+  const c = getClient();
+  const streamResp = await c.chat.completions.create({
+    model,
+    messages: allMessages,
+    temperature: options.temperature ?? 0.5,
+    max_tokens: options.maxTokens ?? 4096,
+    stream: true,
+  }, { signal: options.signal });
+
+  for await (const chunk of streamResp) {
+    const content = chunk.choices?.[0]?.delta?.content || "";
+    if (content) yield content;
+  }
+}
+
 export async function checkConnection(): Promise<{ ok: boolean; message: string }> {
   try {
     if (LLM_PROVIDER === "local") {
@@ -125,14 +176,14 @@ export async function checkConnection(): Promise<{ ok: boolean; message: string 
       if (LLM_API_KEY) headers["Authorization"] = `Bearer ${LLM_API_KEY}`;
       const resp = await fetch(`${baseURL.replace(/\/+$/, "")}/models`, { headers });
       if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`);
-      return { ok: true, message: `已连接 local / ${model}` };
+      return { ok: true, message: "已连接 local / " + model };
     }
 
     const c = getClient();
     await c.models.list();
     const preset = PRESETS[LLM_PROVIDER] || PRESETS.deepseek;
     const model = LLM_MODEL || preset.model;
-    return { ok: true, message: `已连接 ${LLM_PROVIDER} / ${model}` };
+    return { ok: true, message: "已连接 " + LLM_PROVIDER + " / " + model };
   } catch (e: any) {
     return { ok: false, message: e.message || "连接失败" };
   }
